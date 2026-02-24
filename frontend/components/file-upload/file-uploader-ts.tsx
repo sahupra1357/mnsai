@@ -1,0 +1,115 @@
+"use client"
+
+import { useState, useRef, type ChangeEvent } from "react"
+import { Loader2 } from "lucide-react"
+import {
+  GptfilesService,
+  type GptfilesOcrEndpointData,
+  type GptfilesOcrEndpointResponse,
+} from "@/src/client"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+
+function FileUploaderTS() {
+  const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined)
+  const [filePath, setFilePath] = useState("")
+  const [responseJson, setResponseJson] = useState("")
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    setSelectedFile(file)
+    if (file) {
+      setFilePath(file.name)
+    }
+  }
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      return
+    }
+    setIsLoading(true)
+
+    try {
+      const uploadData: GptfilesOcrEndpointData = {
+        formData: {
+          file: selectedFile,
+        },
+      }
+      const response: GptfilesOcrEndpointResponse =
+        await GptfilesService.ocrEndpoint(uploadData)
+
+      if (!response) {
+        throw new Error(`Server error: ${response}`)
+      } else {
+        const formattedResponse = response.text.replace(/\n/g, "\n")
+        setResponseJson(formattedResponse)
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      setResponseJson(`Error uploading file: ${message}`)
+    }
+    setIsLoading(false)
+  }
+
+  return (
+    <>
+      <div className="py-4">
+        <div className="flex items-center gap-2 w-full">
+          <Input
+            type="text"
+            value={filePath}
+            readOnly
+            placeholder="File path will be displayed here"
+            className="flex-1 min-w-0"
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button
+            type="button"
+            onClick={handleButtonClick}
+            className="bg-ui-main hover:bg-[#00766C] text-white font-bold"
+          >
+            Choose File
+          </Button>
+          {selectedFile && (
+            <Button
+              type="button"
+              onClick={handleUpload}
+              className="bg-ui-main hover:bg-[#00766C] text-white font-bold"
+            >
+              Upload
+            </Button>
+          )}
+        </div>
+      </div>
+      <div>
+        {isLoading ? (
+          <Loader2 className="h-8 w-8 animate-spin text-ui-main" />
+        ) : (
+          responseJson && (
+            <textarea
+              value={responseJson}
+              readOnly
+              placeholder="..."
+              className="mt-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              rows={20}
+            />
+          )
+        )}
+      </div>
+    </>
+  )
+}
+
+export default FileUploaderTS
