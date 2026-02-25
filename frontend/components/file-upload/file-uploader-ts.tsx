@@ -2,11 +2,6 @@
 
 import { useState, useRef, type ChangeEvent } from "react"
 import { Loader2 } from "lucide-react"
-import {
-  GptfilesService,
-  type GptfilesOcrEndpointData,
-  type GptfilesOcrEndpointResponse,
-} from "@/src/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -31,26 +26,27 @@ function FileUploaderTS() {
   }
 
   const handleUpload = async () => {
-    if (!selectedFile) {
-      return
-    }
+    if (!selectedFile) return
     setIsLoading(true)
 
     try {
-      const uploadData: GptfilesOcrEndpointData = {
-        formData: {
-          file: selectedFile,
-        },
-      }
-      const response: GptfilesOcrEndpointResponse =
-        await GptfilesService.ocrEndpoint(uploadData)
+      const form = new FormData()
+      form.append("file", selectedFile)
 
-      if (!response) {
-        throw new Error(`Server error: ${response}`)
-      } else {
-        const formattedResponse = response.text.replace(/\n/g, "\n")
-        setResponseJson(formattedResponse)
+      // Route through the Next.js proxy so the HttpOnly access_token cookie
+      // is read server-side and forwarded as an Authorization: Bearer header.
+      const res = await fetch("/api/gptfiles/ocr", {
+        method: "POST",
+        body: form,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.detail ?? `Server error ${res.status}`)
       }
+
+      setResponseJson(data.text)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       setResponseJson(`Error uploading file: ${message}`)

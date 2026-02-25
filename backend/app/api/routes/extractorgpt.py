@@ -2,18 +2,17 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Body
 import os
 import tempfile
 import asyncio
-from typing import  Optional
-from pydantic import  ValidationError
-from app.gptocr.model.gptmodel import OCRRequest, OCRResponse
+from typing import Any, Optional
+from pydantic import ValidationError
+from app.gptocr.model.gptmodel import OCRRequest, OCRResponse, OCRJsonResponse
 from app.gptocr.utilityFunction import convert_pdf_to_images_pymupdf, encode_images, create_batches
 from app.gptocr.helperFunction import get_pdf_bytes
 from app.gptocr.ocrbatchprocess import process_batches, concatenate_texts
+from app.gptocr.jsonextractservice import json_extract_service
 from app.gptocr.logger import logger
 from app.core.config import settings
 from app.api.deps import CurrentUser, SessionDep
-import re
 from app.models import Extr, ExtrBase, Item
-from typing import Any
 from sqlmodel import func, select
 
 router = APIRouter(prefix="/gptfiles", tags=["gptfiles"])
@@ -117,6 +116,80 @@ async def ocr_endpoint(
             status_code=500,
             detail="An unexpected error occurred during OCR processing.",
         )
+
+@router.post('/ocr-json', response_model=OCRJsonResponse)
+async def ocr_json_endpoint(
+    session: SessionDep,
+    file: Optional[UploadFile] = File(None),
+    current_user: CurrentUser = None,
+):
+    """
+    Perform OCR on a provided PDF/image file and return the extracted content
+    as a dynamic, hierarchical JSON object whose structure is determined by
+    the document type (invoice, bill, passport, driving licence, etc.).
+
+    Returns:
+        OCRJsonResponse: ``document_type`` (str) + ``data`` (nested dict).
+    """
+    try:
+        extr_count = read_extr_count(session=session, current_user=current_user)
+        if extr_count > settings.MAX_EXTR_COUNT:
+            raise HTTPException(
+                status_code=403,
+                detail="Maximum number of extractions reached. Please subscribe to use further.",
+            )
+
+        pdf_bytes = await get_pdf_bytes(file)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(pdf_bytes)
+            tmp_pdf_path = tmp.name
+
+        try:
+            loop = asyncio.get_event_loop()
+            image_bytes_list = await loop.run_in_executor(
+                None, convert_pdf_to_images_pymupdf, tmp_pdf_path
+            )
+
+            file_extr = ExtrBase(
+                filename=file.filename,
+                pagecount=len(image_bytes_list),
+                owner_id=current_user.id,
+            )
+            create_extr(extr_in=file_extr, current_user=current_user, session=session)
+
+            image_data_urls = encode_images(image_bytes_list)
+            batches = create_batches(image_data_urls, settings.BATCH_SIZE)
+            extracted_texts = await process_batches(batches)
+            final_text = concatenate_texts(extracted_texts)
+
+            if not final_text:
+                raise HTTPException(
+                    status_code=500, detail="OCR completed but no text was extracted."
+                )
+
+            # Convert extracted markdown text → dynamic hierarchical JSON
+            result = await json_extract_service.extract_json(final_text)
+            return OCRJsonResponse(
+                document_type=result["document_type"],
+                data=result["data"],
+            )
+
+        finally:
+            os.remove(tmp_pdf_path)
+
+    except HTTPException:
+        raise
+    except ValidationError as ve:
+        logger.error(f"Validation error: {ve}")
+        raise HTTPException(status_code=422, detail="Invalid request parameters.")
+    except Exception as e:
+        logger.exception(f"Unhandled exception in /ocr-json endpoint: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during OCR-JSON processing.",
+        )
+
 
 def create_extr(
     *, session: SessionDep, current_user: CurrentUser, extr_in: ExtrBase

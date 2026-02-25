@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, HttpUrl
 
@@ -11,3 +11,7 @@ class OCRRequest(BaseModel):
 
 class OCRResponse(BaseModel):
     text: str
+
+class OCRJsonResponse(BaseModel):
+    document_type: str
+    data: dict[str, Any]
