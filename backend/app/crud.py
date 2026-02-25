@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from typing import Any
 
@@ -35,6 +36,23 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     statement = select(User).where(User.email == email)
     session_user = session.exec(statement).first()
     return session_user
+
+
+def get_or_create_oauth_user(*, session: Session, email: str, full_name: str | None) -> User:
+    user = get_user_by_email(session=session, email=email)
+    if user:
+        return user
+    db_user = User(
+        email=email,
+        full_name=full_name,
+        hashed_password=get_password_hash(secrets.token_hex(32)),
+        is_active=True,
+        is_superuser=False,
+    )
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
 
 
 def authenticate(*, session: Session, email: str, password: str) -> User | None:
