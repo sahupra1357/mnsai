@@ -4,69 +4,95 @@ import { useState, useRef, type ChangeEvent } from "react"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+type OutputFormat = "json" | "markdown"
 
 function FileUploaderTS() {
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined)
   const [filePath, setFilePath] = useState("")
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("json")
   const [documentType, setDocumentType] = useState("")
-  const [responseJson, setResponseJson] = useState("")
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [responseText, setResponseText] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click()
-  }
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setSelectedFile(file)
     setDocumentType("")
-    setResponseJson("")
-    if (file) {
-      setFilePath(file.name)
-    }
+    setResponseText("")
+    if (file) setFilePath(file.name)
   }
 
   const handleUpload = async () => {
     if (!selectedFile) return
     setIsLoading(true)
     setDocumentType("")
-    setResponseJson("")
+    setResponseText("")
 
     try {
       const form = new FormData()
       form.append("file", selectedFile)
 
-      const res = await fetch("/api/gptfiles/ocr-json", {
-        method: "POST",
-        body: form,
-      })
+      const endpoint =
+        outputFormat === "json"
+          ? "/api/gptfiles/ocr-json"
+          : "/api/gptfiles/ocr"
 
+      const res = await fetch(endpoint, { method: "POST", body: form })
       const data = await res.json()
 
       if (!res.ok) {
         throw new Error(data?.detail ?? `Server error ${res.status}`)
       }
 
-      setDocumentType(data.document_type)
-      setResponseJson(JSON.stringify(data.data, null, 2))
+      if (outputFormat === "json") {
+        setDocumentType(data.document_type)
+        setResponseText(JSON.stringify(data.data, null, 2))
+      } else {
+        setResponseText(data.text)
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      setResponseJson(`Error uploading file: ${message}`)
+      setResponseText(`Error uploading file: ${message}`)
     }
+
     setIsLoading(false)
   }
 
   return (
     <>
-      <div className="py-4">
+      {/* ── Controls row ── */}
+      <div className="py-4 space-y-3">
+        {/* Format toggle */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            Output format
+          </span>
+          <Tabs
+            value={outputFormat}
+            onValueChange={(v) => {
+              setOutputFormat(v as OutputFormat)
+              setDocumentType("")
+              setResponseText("")
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="json">JSON</TabsTrigger>
+              <TabsTrigger value="markdown">Markdown</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* File picker + upload */}
         <div className="flex items-center gap-2 w-full">
           <Input
             type="text"
             value={filePath}
             readOnly
-            placeholder="File path will be displayed here"
+            placeholder="No file chosen"
             className="flex-1 min-w-0"
           />
           <input
@@ -77,7 +103,7 @@ function FileUploaderTS() {
           />
           <Button
             type="button"
-            onClick={handleButtonClick}
+            onClick={() => fileInputRef.current?.click()}
             className="bg-ui-main hover:bg-[#00766C] text-white font-bold"
           >
             Choose File
@@ -93,13 +119,15 @@ function FileUploaderTS() {
           )}
         </div>
       </div>
+
+      {/* ── Result area ── */}
       <div>
         {isLoading ? (
           <Loader2 className="h-8 w-8 animate-spin text-ui-main" />
         ) : (
-          responseJson && (
-            <div className="mt-4 space-y-2">
-              {documentType && (
+          responseText && (
+            <div className="mt-2 space-y-2">
+              {outputFormat === "json" && documentType && (
                 <p className="text-sm font-medium text-muted-foreground">
                   Document type:{" "}
                   <span className="font-semibold text-foreground capitalize">
@@ -108,10 +136,13 @@ function FileUploaderTS() {
                 </p>
               )}
               <textarea
-                value={responseJson}
+                value={responseText}
                 readOnly
-                placeholder="..."
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                className={[
+                  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+                  "focus:outline-none focus:ring-2 focus:ring-ring",
+                  outputFormat === "json" ? "font-mono" : "",
+                ].join(" ")}
                 rows={30}
               />
             </div>
