@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 function FileUploaderTS() {
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined)
   const [filePath, setFilePath] = useState("")
+  const [documentType, setDocumentType] = useState("")
   const [responseJson, setResponseJson] = useState("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
@@ -20,6 +21,8 @@ function FileUploaderTS() {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setSelectedFile(file)
+    setDocumentType("")
+    setResponseJson("")
     if (file) {
       setFilePath(file.name)
     }
@@ -28,14 +31,14 @@ function FileUploaderTS() {
   const handleUpload = async () => {
     if (!selectedFile) return
     setIsLoading(true)
+    setDocumentType("")
+    setResponseJson("")
 
     try {
       const form = new FormData()
       form.append("file", selectedFile)
 
-      // Route through the Next.js proxy so the HttpOnly access_token cookie
-      // is read server-side and forwarded as an Authorization: Bearer header.
-      const res = await fetch("/api/gptfiles/ocr", {
+      const res = await fetch("/api/gptfiles/ocr-json", {
         method: "POST",
         body: form,
       })
@@ -46,7 +49,8 @@ function FileUploaderTS() {
         throw new Error(data?.detail ?? `Server error ${res.status}`)
       }
 
-      setResponseJson(data.text)
+      setDocumentType(data.document_type)
+      setResponseJson(JSON.stringify(data.data, null, 2))
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       setResponseJson(`Error uploading file: ${message}`)
@@ -94,13 +98,23 @@ function FileUploaderTS() {
           <Loader2 className="h-8 w-8 animate-spin text-ui-main" />
         ) : (
           responseJson && (
-            <textarea
-              value={responseJson}
-              readOnly
-              placeholder="..."
-              className="mt-4 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              rows={20}
-            />
+            <div className="mt-4 space-y-2">
+              {documentType && (
+                <p className="text-sm font-medium text-muted-foreground">
+                  Document type:{" "}
+                  <span className="font-semibold text-foreground capitalize">
+                    {documentType.replace(/_/g, " ")}
+                  </span>
+                </p>
+              )}
+              <textarea
+                value={responseJson}
+                readOnly
+                placeholder="..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                rows={30}
+              />
+            </div>
           )
         )}
       </div>
