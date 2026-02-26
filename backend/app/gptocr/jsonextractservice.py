@@ -19,10 +19,21 @@ Given extracted text/markdown from a document, your job is to:
 1. Identify the exact document type (e.g. invoice, bill, tax_invoice, purchase_order,
    utility_bill, passport, driving_license, aadhaar_card, voter_id, green_card,
    birth_certificate, contract, receipt, bank_statement, medical_report, etc.)
-2. Extract ALL information from the text and organise it into a well-structured,
-   hierarchical JSON object.
+2. Extract EVERY piece of information from the text and organise it into a
+   well-structured, hierarchical JSON object.
 
-## Rules
+## Completeness rules — CRITICAL
+- **Include every field visible in the source text. Do not skip, summarise, or
+  merge any fields, no matter how many there are.**
+- For line-item tables: output EVERY row as a separate object in the array.
+  If there are 50 line items, output all 50. Never truncate or say "... and more".
+- For multi-page documents: capture fields from ALL pages.
+- If a field label exists in the source but the value is blank/illegible, represent
+  it as an empty string "" rather than omitting it — so the consumer knows the field
+  exists.
+- Do NOT invent or infer values that are not explicitly present in the source text.
+
+## Format rules
 - Return ONLY valid JSON — no markdown fences, no explanation, no trailing text.
 - The root object MUST have exactly two keys:
     "document_type" : a short snake_case string identifying the document
@@ -30,21 +41,20 @@ Given extracted text/markdown from a document, your job is to:
 
 - Structure the "data" object dynamically based on the document type:
   - For invoices / bills group fields under logical parents such as:
-      vendor, buyer, invoice_details, line_items (array), totals, payment_terms
+      vendor, buyer, invoice_details, line_items (array), totals, payment_terms,
+      bank_details, additional_charges, notes
   - For identity documents group fields such as:
       personal_info, document_info, address, additional_fields
   - For contracts group fields such as:
       parties, terms, dates, signatures, clauses
-  - For any other type use the most logical grouping.
+  - For any other type use the most logical grouping; add extra sub-objects
+    as needed to capture every field present.
 
 - Use snake_case for every key.
 - Preserve all numeric values as numbers (not strings) where possible.
 - Preserve dates in ISO-8601 format (YYYY-MM-DD) where unambiguous; otherwise keep
   the original string.
-- If a field is not present in the source text, omit it entirely — do NOT output null
-  or empty string values.
 - For tabular/line-item data always use a JSON array of objects.
-- Do NOT invent or infer values that are not explicitly present in the source text.
 
 ## Output shape example (invoice)
 {
@@ -116,16 +126,22 @@ class JsonExtractService:
                         {
                             "role": "user",
                             "content": (
-                                "Here is the extracted document text. "
-                                "Return the structured JSON as instructed:\n\n"
+                                "Extract EVERY field from the document below into JSON. "
+                                "Do not skip any line items or fields.\n\n"
                                 + extracted_text
                             ),
                         },
                     ],
                     temperature=0.0,
-                    max_tokens=4096,
+                    max_tokens=16000,
                 )
-                raw = response.choices[0].message.content.strip()
+                choice = response.choices[0]
+                if choice.finish_reason == "length":
+                    logger.warning(
+                        "JSON extraction hit max_tokens limit — output may be truncated. "
+                        f"Input text length: {len(extracted_text)} chars."
+                    )
+                raw = choice.message.content.strip()
                 logger.info(f"JSON extraction response length: {len(raw)} chars.")
                 return self._parse_response(raw)
             except OpenAIError as e:
