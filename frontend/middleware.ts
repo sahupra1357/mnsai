@@ -6,6 +6,7 @@ const PROTECTED_PATHS = [
   "/admin",
   "/settings",
   "/extractor",
+  "/solutions",
 ]
 
 const PUBLIC_AUTH_PATHS = ["/login", "/signup", "/recover-password", "/reset-password"]

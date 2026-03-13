@@ -49,6 +49,11 @@ const NAV_ITEMS: Array<NavItem> = [
         subLabel: "An exclusive list for contract work",
         href: "/extractor",
       },
+      {
+        label: "Course Search",
+        subLabel: "Find the best courses near you",
+        href: "/solutions/course-search",
+      },
     ],
   },
   {
