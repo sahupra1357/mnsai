@@ -54,6 +54,11 @@ const NAV_ITEMS: Array<NavItem> = [
         subLabel: "Find the best courses near you",
         href: "/solutions/course-search",
       },
+      {
+        label: "ATS Resume Matcher",
+        subLabel: "Match your resume to any job description",
+        href: "/solutions/ats-resume-matcher",
+      },
     ],
   },
   {
