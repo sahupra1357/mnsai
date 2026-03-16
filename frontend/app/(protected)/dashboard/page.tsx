@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import useAuth from "@/hooks/use-auth"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,15 +45,16 @@ const quickLinks = [
   { icon: Users, label: "Admin Panel", href: "/admin", superuserOnly: true },
 ]
 
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 12) return "Good morning"
-  if (h < 17) return "Good afternoon"
-  return "Good evening"
-}
-
 export default function DashboardPage() {
   const { user } = useAuth()
+  const [greeting, setGreeting] = useState("")
+
+  useEffect(() => {
+    const h = new Date().getHours()
+    if (h < 12) setGreeting("Good morning")
+    else if (h < 17) setGreeting("Good afternoon")
+    else setGreeting("Good evening")
+  }, [])
 
   const name = user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there"
 
@@ -62,7 +64,7 @@ export default function DashboardPage() {
       <div className="border-b bg-muted/30">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest mb-1">
-            {greeting()}
+            {greeting}
           </p>
           <h1 className="text-3xl font-bold text-foreground">
             Welcome back, {name}

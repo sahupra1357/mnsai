@@ -4,7 +4,7 @@ from sqlmodel import Session
 
 from app.api.deps import SessionDep, CurrentUser, get_current_active_superuser
 from app import crud
-from app.models import BlogPostCreate, BlogPostPublic, BlogPostsPublic, BlogPostUpdate, Message
+from app.models import BlogPostCreate, BlogPostPublic, BlogPostsPublic, BlogPostUpdate, Message, User
 from fastapi import Depends
 
 router = APIRouter(prefix="/blog", tags=["blog"])
@@ -19,7 +19,7 @@ def list_posts(session: SessionDep, skip: int = 0, limit: int = 50):
 @router.get("/posts/all", response_model=BlogPostsPublic)
 def list_all_posts(
     session: SessionDep,
-    _: CurrentUser = Depends(get_current_active_superuser),
+    _: User = Depends(get_current_active_superuser),
     skip: int = 0,
     limit: int = 100,
 ):
@@ -39,7 +39,7 @@ def get_post(slug: str, session: SessionDep):
 def create_post(
     post_in: BlogPostCreate,
     session: SessionDep,
-    current_user: CurrentUser = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser),
 ):
     existing = crud.get_blog_post_by_slug(session=session, slug=post_in.slug)
     if existing:
@@ -52,7 +52,7 @@ def update_post(
     slug: str,
     post_in: BlogPostUpdate,
     session: SessionDep,
-    _: CurrentUser = Depends(get_current_active_superuser),
+    _: User = Depends(get_current_active_superuser),
 ):
     post = crud.get_blog_post_by_slug(session=session, slug=slug)
     if not post:
@@ -64,7 +64,7 @@ def update_post(
 def delete_post(
     slug: str,
     session: SessionDep,
-    _: CurrentUser = Depends(get_current_active_superuser),
+    _: User = Depends(get_current_active_superuser),
 ):
     post = crud.get_blog_post_by_slug(session=session, slug=slug)
     if not post:

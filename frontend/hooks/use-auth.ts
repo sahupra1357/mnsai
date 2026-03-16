@@ -24,6 +24,7 @@ const useAuth = () => {
     queryKey: ["currentUser"],
     queryFn: fetchCurrentUser,
     retry: false,
+    staleTime: 0,
   })
 
   const signUpMutation = useMutation({
@@ -62,7 +63,7 @@ const useAuth = () => {
       }
     },
     onSuccess: () => {
-      router.push("/dashboard")
+      window.location.href = "/dashboard"
     },
     onError: (err: Record<string, unknown>) => {
       let errDetail = err?.detail
@@ -78,7 +79,7 @@ const useAuth = () => {
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
     queryClient.clear()
-    router.push("/login")
+    window.location.href = "/login"
   }
 
   return {
