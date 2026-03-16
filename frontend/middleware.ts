@@ -18,6 +18,11 @@ export function middleware(request: NextRequest) {
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p))
   const isPublicAuth = PUBLIC_AUTH_PATHS.some((p) => pathname.startsWith(p))
 
+  // Redirect logged-in users away from the public landing page
+  if (pathname === "/" && token) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
+
   if (isProtected && !token) {
     const loginUrl = new URL("/login", request.url)
     return NextResponse.redirect(loginUrl)

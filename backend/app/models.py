@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
@@ -45,6 +46,7 @@ class User(UserBase, table=True):
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
     extrs: list["Extr"] = Relationship(back_populates="owner", cascade_delete=True)
+    blog_posts: list["BlogPost"] = Relationship(back_populates="author", cascade_delete=True)
 
 
 
@@ -137,3 +139,48 @@ class Extr(ExtrBase, table=True):
         foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
     owner: User | None = Relationship(back_populates="extrs")
+
+
+# Blog
+class BlogPostBase(SQLModel):
+    title: str = Field(min_length=1, max_length=255)
+    slug: str = Field(min_length=1, max_length=255)
+    summary: str | None = Field(default=None, max_length=500)
+    content: str
+    tags: str | None = Field(default=None, max_length=500)
+    is_published: bool = Field(default=False)
+
+
+class BlogPostCreate(BlogPostBase):
+    pass
+
+
+class BlogPostUpdate(SQLModel):
+    title: str | None = Field(default=None, max_length=255)
+    summary: str | None = Field(default=None, max_length=500)
+    content: str | None = None
+    tags: str | None = Field(default=None, max_length=500)
+    is_published: bool | None = None
+
+
+class BlogPost(BlogPostBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    slug: str = Field(max_length=255, unique=True, index=True)
+    author_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    author: User | None = Relationship(back_populates="blog_posts")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BlogPostPublic(BlogPostBase):
+    id: uuid.UUID
+    author_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class BlogPostsPublic(SQLModel):
+    data: list[BlogPostPublic]
+    count: int

@@ -77,3 +77,55 @@ def create_extr(*, session: Session, extr_in: ExtrBase, owner_id: uuid.UUID) -> 
     session.commit()
     session.refresh(db_item)
     return db_item
+
+
+from app.models import BlogPost, BlogPostCreate, BlogPostUpdate
+from datetime import datetime
+
+
+def get_blog_posts(
+    *, session: Session, skip: int = 0, limit: int = 100, published_only: bool = True
+) -> tuple[list[BlogPost], int]:
+    statement = select(BlogPost)
+    if published_only:
+        statement = statement.where(BlogPost.is_published == True)  # noqa: E712
+    statement = statement.order_by(BlogPost.created_at.desc())
+    count_statement = select(BlogPost)
+    if published_only:
+        count_statement = count_statement.where(BlogPost.is_published == True)  # noqa: E712
+    total = len(session.exec(count_statement).all())
+    posts = session.exec(statement.offset(skip).limit(limit)).all()
+    return list(posts), total
+
+
+def get_blog_post_by_slug(*, session: Session, slug: str) -> BlogPost | None:
+    return session.exec(select(BlogPost).where(BlogPost.slug == slug)).first()
+
+
+def create_blog_post(
+    *, session: Session, post_in: BlogPostCreate, author_id: uuid.UUID
+) -> BlogPost:
+    db_post = BlogPost.model_validate(post_in, update={"author_id": author_id})
+    session.add(db_post)
+    session.commit()
+    session.refresh(db_post)
+    return db_post
+
+
+def update_blog_post(
+    *, session: Session, db_post: BlogPost, post_in: BlogPostUpdate
+) -> BlogPost:
+    post_data = post_in.model_dump(exclude_unset=True)
+    post_data["updated_at"] = datetime.utcnow()
+    db_post.sqlmodel_update(post_data)
+    session.add(db_post)
+    session.commit()
+    session.refresh(db_post)
+    return db_post
+
+
+def delete_blog_post(*, session: Session, post_id: uuid.UUID) -> None:
+    post = session.get(BlogPost, post_id)
+    if post:
+        session.delete(post)
+        session.commit()

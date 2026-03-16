@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import UserMenu from "./user-menu"
+import useAuth from "@/hooks/use-auth"
 
 interface NavItem {
   label: string
@@ -63,16 +64,24 @@ const NAV_ITEMS: Array<NavItem> = [
   },
   {
     label: "Resources",
-    href: "#",
+    children: [
+      {
+        label: "Blog",
+        subLabel: "Insights, tutorials, and updates",
+        href: "/resources/blog",
+      },
+    ],
   },
   {
     label: "Pricing",
-    href: "#",
+    href: "/pricing",
   },
 ]
 
 export default function WithSubnavigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { user } = useAuth()
+  const logoHref = user ? "/dashboard" : "/"
 
   return (
     <nav className="border-b border-border bg-background">
@@ -90,7 +99,7 @@ export default function WithSubnavigation() {
 
         {/* Logo */}
         <div className="flex flex-1 items-center px-4">
-          <Link href="/">
+          <Link href={logoHref}>
             <Image
               src="/assets/images/mnsAI_2.png"
               alt="mnsAI logo"
