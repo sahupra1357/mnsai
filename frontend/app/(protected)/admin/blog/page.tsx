@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useForm, type SubmitHandler } from "react-hook-form"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import useAuth from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
-import { Pencil, Trash2, Plus } from "lucide-react"
+import { Pencil, Trash2, Plus, Eye, Code2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface BlogPost {
@@ -36,6 +38,7 @@ interface BlogPost {
   tags: string | null
   is_published: boolean
   created_at: string
+  updated_at: string
 }
 
 interface PostForm {
@@ -55,7 +58,13 @@ function slugify(title: string) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 export default function AdminBlogPage() {
@@ -65,14 +74,16 @@ export default function AdminBlogPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<BlogPost | null>(null)
   const [saving, setSaving] = useState(false)
+  const [contentTab, setContentTab] = useState<"write" | "preview">("write")
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  const apiUrl = "/api/proxy"
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<PostForm>({
     defaultValues: { is_published: false },
   })
 
   const titleValue = watch("title")
+  const contentValue = watch("content")
 
   // Auto-generate slug from title when creating new
   useEffect(() => {
@@ -93,12 +104,14 @@ export default function AdminBlogPage() {
 
   function openCreate() {
     setEditing(null)
+    setContentTab("write")
     reset({ title: "", slug: "", summary: "", content: "", tags: "", is_published: false })
     setOpen(true)
   }
 
   function openEdit(post: BlogPost) {
     setEditing(post)
+    setContentTab("write")
     reset({
       title: post.title,
       slug: post.slug,
@@ -167,7 +180,7 @@ export default function AdminBlogPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Blog Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create and manage blog posts</p>
+          <p className="text-sm text-muted-foreground mt-1">Create and manage blog posts. Content supports Markdown.</p>
         </div>
         <Button onClick={openCreate} className="gap-2 bg-ui-main hover:bg-[#003d8f]">
           <Plus className="h-4 w-4" /> New Post
@@ -185,14 +198,15 @@ export default function AdminBlogPage() {
               <TableHead>Title</TableHead>
               <TableHead>Tags</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {posts.map((post) => (
               <TableRow key={post.id}>
-                <TableCell className="font-medium max-w-[240px] truncate">{post.title}</TableCell>
+                <TableCell className="font-medium max-w-[200px] truncate">{post.title}</TableCell>
                 <TableCell>
                   {post.tags ? (
                     <div className="flex flex-wrap gap-1">
@@ -209,13 +223,14 @@ export default function AdminBlogPage() {
                     {post.is_published ? "Published" : "Draft"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatDate(post.created_at)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(post.created_at)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(post.updated_at)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(post)}>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(post)} title="Edit">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deletePost(post)}>
+                    <Button variant="ghost" size="icon" onClick={() => deletePost(post)} title="Delete">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -227,42 +242,82 @@ export default function AdminBlogPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Post" : "New Post"}</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="title">Title *</Label>
-              <Input id="title" {...register("title", { required: "Title is required" })} />
-              {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="title">Title *</Label>
+                <Input id="title" {...register("title", { required: "Title is required" })} />
+                {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="slug">Slug *</Label>
+                <Input id="slug" {...register("slug", { required: "Slug is required" })} />
+                {errors.slug && <p className="text-xs text-destructive">{errors.slug.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="summary">Summary</Label>
+                <Input id="summary" placeholder="Short description shown in the list" {...register("summary")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tags">Tags</Label>
+                <Input id="tags" placeholder="Comma-separated: AI, Tutorial, Product" {...register("tags")} />
+              </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="slug">Slug *</Label>
-              <Input id="slug" {...register("slug", { required: "Slug is required" })} />
-              {errors.slug && <p className="text-xs text-destructive">{errors.slug.message}</p>}
-            </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="content">Content * <span className="text-xs font-normal text-muted-foreground">(Markdown supported)</span></Label>
+                <div className="flex items-center gap-1 border rounded-md p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setContentTab("write")}
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded transition-colors ${
+                      contentTab === "write"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Code2 className="h-3 w-3" /> Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentTab("preview")}
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded transition-colors ${
+                      contentTab === "preview"
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Eye className="h-3 w-3" /> Preview
+                  </button>
+                </div>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="summary">Summary</Label>
-              <Input id="summary" placeholder="Short description shown in the list" {...register("summary")} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="tags">Tags</Label>
-              <Input id="tags" placeholder="Comma-separated: AI, Tutorial, Product" {...register("tags")} />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="content">Content *</Label>
-              <Textarea
-                id="content"
-                rows={12}
-                placeholder="Write your post content here…"
-                {...register("content", { required: "Content is required" })}
-              />
+              {contentTab === "write" ? (
+                <Textarea
+                  id="content"
+                  rows={16}
+                  placeholder={`Write your post in Markdown…\n\n# Heading\n\n**Bold**, *italic*, \`code\`\n\n- List item`}
+                  className="font-mono text-sm resize-y"
+                  {...register("content", { required: "Content is required" })}
+                />
+              ) : (
+                <div className="min-h-[280px] rounded-md border p-4 overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+                  {contentValue ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{contentValue}</ReactMarkdown>
+                  ) : (
+                    <p className="text-muted-foreground text-sm italic">Nothing to preview yet.</p>
+                  )}
+                </div>
+              )}
               {errors.content && <p className="text-xs text-destructive">{errors.content.message}</p>}
             </div>
 

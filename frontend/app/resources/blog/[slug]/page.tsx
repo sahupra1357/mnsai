@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import WithSubnavigation from "@/components/common/with-subnavigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CalendarDays, ArrowLeft } from "lucide-react"
+import { CalendarDays, Clock, ArrowLeft } from "lucide-react"
 
 interface BlogPost {
   id: string
@@ -16,6 +18,7 @@ interface BlogPost {
   content: string
   tags: string | null
   created_at: string
+  updated_at: string
 }
 
 function formatDate(iso: string) {
@@ -28,7 +31,6 @@ function formatDate(iso: string) {
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
-  const router = useRouter()
   const [post, setPost] = useState<BlogPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -85,13 +87,23 @@ export default function BlogDetailPage() {
               <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{post.summary}</p>
             )}
 
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-4 mb-10 pb-8 border-b">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {formatDate(post.created_at)}
+            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-4 mb-10 pb-8 border-b">
+              <span className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Published {formatDate(post.created_at)}
+              </span>
+              {post.updated_at !== post.created_at && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Updated {formatDate(post.updated_at)}
+                </span>
+              )}
             </div>
 
-            <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
-              {post.content}
+            <div className="prose prose-neutral dark:prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {post.content}
+              </ReactMarkdown>
             </div>
           </article>
         )}
