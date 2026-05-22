@@ -56,4 +56,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
 #CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
-CMD ["fastapi", "run", "app/main.py"]
+CMD bash scripts/prestart.sh && fastapi run app/main.py
