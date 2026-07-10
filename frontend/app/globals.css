@@ -24,6 +24,10 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 218 100% 34%;
     --radius: 0.5rem;
+    /* Brand accent for text, icons and rules. Same hue as ui-main (#004AAD),
+       lightened in dark so it clears WCAG AA against the dark background.
+       Filled surfaces keep ui-main so white labels stay legible. */
+    --ui-accent: 214 100% 34%;
   }
 
   .dark {
@@ -46,6 +50,7 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 218 100% 50%;
+    --ui-accent: 217 100% 68%;
   }
 }
 
@@ -54,6 +59,23 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  /* Dossier dot-grid texture — theme-aware, used behind the hero only. */
+  .dossier-dots {
+    background-image: radial-gradient(
+      hsl(var(--foreground) / 0.055) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    background-position: -1px -1px;
+  }
+  /* Fades the dot-grid out toward the bottom of the hero. */
+  .dossier-dots-mask {
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
   }
 }

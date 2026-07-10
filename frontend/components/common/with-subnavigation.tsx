@@ -70,6 +70,11 @@ const NAV_ITEMS: Array<NavItem> = [
         subLabel: "Insights, tutorials, and updates",
         href: "/resources/blog",
       },
+      {
+        label: "Profile v1 (1st draft)",
+        subLabel: "Archived first draft of the profile page",
+        href: "/drafts/profile-v1",
+      },
     ],
   },
   {
@@ -101,11 +106,12 @@ export default function WithSubnavigation() {
         <div className="flex flex-1 items-center px-4">
           <Link href={logoHref}>
             <Image
-              src="/assets/images/mnsAI_2.png"
+              src="/assets/images/mnsAI_2-transparent.png"
               alt="mnsAI logo"
               width={140}
               height={50}
               style={{ width: "auto", height: "auto" }}
+              className="dark:brightness-0 dark:invert"
               priority
             />
           </Link>

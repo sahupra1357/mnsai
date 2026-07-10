@@ -44,11 +44,12 @@ export default function SignUpPage() {
       <div className="flex h-full max-w-sm mx-auto flex-col items-stretch justify-center gap-4 px-4">
         <div className="flex justify-center mb-4">
           <Image
-            src="/assets/images/mnsAI_2.png"
+            src="/assets/images/mnsAI_2-transparent.png"
             alt="mnsAI logo"
             width={160}
             height={60}
             style={{ width: "auto", height: "auto" }}
+            className="dark:brightness-0 dark:invert"
             priority
           />
         </div>

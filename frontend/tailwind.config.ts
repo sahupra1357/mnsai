@@ -11,6 +11,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: [
+          "var(--font-space-grotesk)",
+          "var(--font-inter)",
+          "ui-sans-serif",
+          "sans-serif",
+        ],
+        mono: [
+          "var(--font-jetbrains-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace",
+        ],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -47,6 +62,7 @@ const config: Config = {
         },
         ui: {
           main: "#004aad",
+          accent: "hsl(var(--ui-accent))",
           success: "#48BB78",
           danger: "#E53E3E",
           dim: "#A0AEC0",

@@ -7,3 +7,9 @@ node_modules/
 .env
 .env_orig
 .playwright-mcp/
+.gstack/
+.DS_Store
+.serena/
+.claude/settings.local.json
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
