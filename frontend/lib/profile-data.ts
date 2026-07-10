@@ -336,12 +336,12 @@ export const projectBuiltWithLabel = "Built with"
 
 export const chatSection = {
   panelTitle: "AI Assistant",
-  statusLabel: "Coming soon",
+  statusLabel: "Online",
   greeting:
-    "Hi! I'm Pradeep's AI assistant. Soon I'll answer your questions about his skills, projects, and services — grounded in his actual resume and project docs. The assistant is being wired up now.",
+    "Hi! I'm Pradeep's AI assistant. Ask me about his skills, projects, and services — I answer from his actual resume and project docs.",
   inputPlaceholder: "Ask about my experience, projects, or services…",
   disabledNote:
-    "Chat is coming soon. In the meantime, reach me directly from the section below.",
+    "Answers are AI-generated from Pradeep's docs. For specifics — timelines, pricing, or your project — email him from the section below.",
   starters: [
     "What can you build?",
     "Show me relevant projects",
