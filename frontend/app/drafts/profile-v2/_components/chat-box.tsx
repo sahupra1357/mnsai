@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { chatSection } from "@/lib/profile-data"
+import { chatSection } from "./profile-data"
 import { CHAT_PREFILL_EVENT, ChatPrefillLink } from "./chat-prefill-link"
 
 /**

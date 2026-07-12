@@ -5,63 +5,80 @@ description: How to build and evolve the mnsAI homepage profile/portfolio page �
 
 # Profile Page (Homepage)
 
-Rebuild `frontend/app/page.tsx` as a professional profile page for **Pradeep Sahu** — an AI engineer specializing in Generative AI and multi-agent systems, offering project services. The audience is prospective customers and collaborators deciding whether to engage him. Every section should answer: *what can he do for me, and what proof is there?*
+`frontend/app/page.tsx` is a professional profile page for **Pradeep Sahu** — an AI engineer specializing in Generative AI and multi-agent systems, offering project services. The audience is prospective customers and collaborators deciding whether to engage him.
 
-**Content source:** all copy comes from `docs/profile-draft.md` (derived from `docs/resume.md`). Never invent facts; omit anything marked `[NEEDS INPUT]` rather than stubbing placeholder data.
+**Content source:** all copy comes from `docs/profile-draft.md` (derived from `docs/resume.md`). Never invent facts. Where the v3 structure calls for content that doesn't exist yet (see the placeholder rule below), render an explicit **blank placeholder**, never fabricated data.
 
-**Frozen v1 draft:** the first draft lives at `frontend/app/drafts/profile-v1/` (own `_components/` copies — fully self-contained) and is linked from the nav Resources dropdown for side-by-side comparison. **Never edit anything under `app/drafts/profile-v1/`**; the v2 rebuild may freely rewrite `components/profile/*` and `lib/profile-data.ts` because v1 no longer depends on them.
+**Frozen drafts & backups (never edit anything under these paths):**
+- `frontend/app/_archive/product-landing.tsx` — original product landing.
+- `frontend/app/drafts/profile-v1/` — 1st draft (generic card-grid), routed at `/drafts/profile-v1`.
+- `frontend/app/drafts/profile-v2/` — 2nd draft ("evidence-driven dossier"), routed at `/drafts/profile-v2`.
+Both drafts are self-contained (`_components/` copies) and linked from the nav Resources dropdown; the live rebuild may freely rewrite `components/profile/*` and `lib/profile-data.ts`.
 
-**Original product landing backup:** `frontend/app/_archive/product-landing.tsx` — never edit or delete.
+## Design direction v3 — reference-format portfolio
 
-## Design direction v2 — "evidence-driven dossier"
+v3 mirrors the **format/structure** of a specific reference portfolio homepage (a personal AI-engineer portfolio: avatar hero → work experience dossiers → projects grid → social proof → education/certifications → skills → contact). Screenshots of the reference are in the session scratchpad (`v3ref-*.png`) if present; otherwise follow this spec — it is complete.
 
-The v1 draft (see `/drafts/profile-v1`) was correct but generic — a standard marketing landing with uniform card grids. v2 replaces that with an **editorial, case-study feel**: the page should read like a well-typeset dossier that proves competence, not a template that claims it. Format inspiration (structure only — **do not copy** its colors, copy, or layout verbatim): long-form case-study pages with narrow reading columns, sticky section nav, big stat tiles, and numbered narrative lists.
+**Hard rules — format only:**
+- **DO NOT COPY any content** from the reference: no phrases, names, numbers, logos, or copy. Structure, layout patterns, and component shapes only.
+- Do not copy its palette either. The page uses the **"Teal & warm paper"** palette (user-chosen, July 2026) — see "Color system" below; keep shadcn primitives, lucide icons, and the existing dot-grid utility.
 
-**Before implementing, load the `frontend-design` skill** for typography/craft guidance.
+## Color system — "Teal & warm paper"
 
-Core moves:
+Implemented at the token layer (shadcn CSS variables in `app/globals.css` light + dark blocks, plus tailwind accent utilities) so the whole site stays coherent — do not hand-color individual app components outside the profile page.
 
-1. **Editorial layout.** Main content in a narrow reading column (`max-w-3xl`) instead of full-width `max-w-6xl` grids. On `xl+`, a slim sticky section rail (left) with scrollspy highlighting and a pinned "Ask my AI assistant" CTA; hidden below `xl`.
-2. **Typography-led hero.** No boxed hero card. Small-caps `ui-main` eyebrow ("AI ENGINEER — GENERATIVE AI & MULTI-AGENT SYSTEMS"), then the name huge and tight (`text-5xl/6xl font-extrabold tracking-tight`), then the value-prop as a large muted dek, then a byline-style row of credential chips (MS + 3 certs). Subtle dot-grid background texture behind the hero only (CSS radial-gradient dots at low opacity, theme-aware).
-3. **Proof tiles.** A 4-up band of stat tiles (big `ui-main` number + small muted label), e.g. "3 — Live AI demos on this site", "4 — Certifications", "3 — Cloud platforms", "6 — Agent frameworks". **Every number must be countable from `docs/profile-draft.md`** — no invented metrics.
-4. **Question-form section headings.** Sections read as answers: "What can I build for you?", "What have I actually shipped?", "What's in the toolbox?", "How do we start?". Left-aligned, editorial scale (`text-3xl font-bold tracking-tight`), not centered marketing headers.
-5. **Services as numbered editorial blocks.** Big muted ordinal (01–04) + bold offer name + description + "Discuss this →" chat-prefill link. Stacked list, not uniform cards.
-6. **Experience highlights as a numbered narrative list.** Bold lead-in phrase then plain text (e.g. "**Drone-vision pipelines.** Detected structural corrosion…"). This is the proof spine of the page.
-7. **Skills as compact definition lists.** Two-column (mobile: one) group blocks with a small icon + group name + comma-separated or tight-list items. Less card chrome, more typography.
-8. **Live demos keep cards** (they're products) but with a consistent "Live demo →" affordance and built-with note.
-9. **Both themes intentional.** The site has a theme toggle; verify the page looks designed (not merely inverted) in light *and* dark.
-10. **Keep**: `ui-main` blue (#004AAD) as the only accent, shadcn primitives, lucide icons, floating chat launcher bottom-right, footer, `WithSubnavigation` nav.
-
-Anti-goals: no teal/purple palette drift, no copied copywriting from any reference, no fake avatars/headshots, no proficiency percentages, no dense card-grid-everything.
+- **Light theme**: warm off-white/cream paper background (a warm hue, not pure white — think `hsl(40 30% 97%)` territory), soft sand/warm-tinted card surfaces, warm dark-gray text; accent is a **deep teal** (~`hsl(180 70% 25%)` range) with hero/launcher gradients running **teal → cyan**; dot grid and borders warm-tinted.
+- **Dark theme**: deep **blue-slate** background (not pure black), slightly lighter slate cards, **bright aqua** accent (readable AA on the dark bg) with the same teal→cyan gradient family glowing brighter; not a flat inversion — surfaces and accent luminosity tuned separately.
+- The `ui-main` utility and shadcn `--primary` tokens move to the teal family so nav links, buttons, and focus rings follow; verify AA contrast for body text and accent-on-surface in BOTH themes.
+- Status/semantic colors (destructive, success) stay as-is.
+- **Placeholder rule:** if a structural slot has no approved content (e.g. employer names, testimonials, press logos, social posts, headshot), render a visible blank placeholder — a dashed-border card/slot with a muted label like "Coming soon" — driven by an EMPTY array/null in `profile-data.ts`, so filling it later means adding data, not code. Never invent content to fill a slot; never silently drop the section.
 
 ## Page structure (top to bottom)
 
-1. **Nav** — keep `WithSubnavigation` (login, solutions, drafts links intact).
-2. **Hero** — per design move 2, with primary CTA "Ask my AI assistant" (scrolls to chat) and secondary "Contact" (mailto).
-3. **Proof tiles** — design move 3.
-4. **Services** ("What can I build for you?") — design move 5, chat pre-fill per card from the draft.
-5. **Experience highlights** ("What have I actually shipped?") — design move 6.
-6. **Live demos** — existing solutions (Data Extraction, Course Search, ATS Resume Matcher) as portfolio cards with live links.
-7. **Skills** ("What's in the toolbox?") — design move 7, five groups from the draft.
-8. **Chat section** ("Ask anything about my experience") — embedded panel (UI stub until the chat-agent phase) + floating launcher.
-9. **Contact band** ("Have a project in mind?") — email + LinkedIn from the draft.
-10. **Footer** — keep.
+1. **Nav** — keep `WithSubnavigation` (Product/Solutions/Resources dropdowns, drafts links, auth buttons intact).
+2. **Hero** — two-column: left, a large circular avatar (placeholder ring with initials "PS" until a headshot exists); right, a small greeting line ("Hi, I'm Pradeep Sahu"), then a huge headline of the professional title with a blue gradient treatment, then 1–2 bold descriptor lines from the value proposition, then a row of small pill chips (role descriptors from the draft). Below: an "As featured in" slot — **blank placeholder** (no press yet). Dot-grid hero background, subtle gradient wash, theme-aware.
+3. **Work Experience** — H2 with a small icon tile. Entry format: org logo slot + org name + location line, role title in accent color, date range line, short summary paragraph, bullet list of accomplishments; optional client-logo strip and testimonial quote card per entry. Content: the resume has **no employer names/dates**, so render ONE placeholder entry (dashed card, "Experience details coming soon") PLUS a "Selected work" sub-block that lists the five approved experience highlights as accomplishment bullets without attribution. The featured-project panel slot (big card with icon, title, description, icon-bullet list, right-hand column of 2–3 stat tiles) IS renderable: use the proof-tile numbers from the draft.
+4. **Projects** — H2 grid (2-col on lg): the three live demos as project cards — title, status badge ("Live demo"), description, tech-stack chips, footer link to the running tool. Plus one wider intro panel describing this platform itself (the profile + chat agent system) as a working project, with the chat agent linked — facts only from the draft/repo. Additional project-card slots: none — do not pad with placeholders here, the grid just has 4 items.
+5. **Sharing / social proof** — H2 with 2-col card slots for posts/talks. No approved content → the section renders with 2 blank placeholder cards ("Posts and talks coming soon").
+6. **Education & Certifications** — two columns side by side. Education: one card (year slot blank, institution, degree from the draft). Certifications: stacked rows — the 3 certifications (year slots blank, issuer names from the draft).
+7. **Skills** — H2 with the five draft groups as subsections, items as chip clusters (not checklists).
+8. **Let's talk** — contact band: heading, email button, LinkedIn button (from the draft); GitHub slot omitted until provided.
+9. **Footer** — keep.
+
+There is **no in-page chat section** — the chat exists ONLY as the floating widget below. Any element that previously deep-linked to `#chat` (featured panel, projects panel) must open the floating widget instead (reuse the prefill event).
+
+## Floating chat widget (the only chat surface)
+
+Format modeled on a messenger-style popover (structure only, wording ours from `profile-data.ts`):
+- **Launcher**: fixed bottom-right circular accent button; toggles to an X when the panel is open. Always present while scrolling.
+- **Panel**: popover anchored above the launcher, ~380px wide, rounded-2xl, elevated shadow; full-width/height sheet on mobile. Structure top→bottom:
+  1. Header row: avatar slot (PS-initials ring until a headshot exists) + name + one-line tagline (e.g. "Ask me about my experience" — take copy from the draft's chat section).
+  2. Assistant greeting bubble shown on open (short welcome inviting questions — copy in `profile-data.ts`).
+  3. Starter chips (3–4, small pill buttons with icons; include a Contact chip) — clicking sends/prefills that question. Reuse the existing chip + prefill event mechanics.
+  4. Scrollable message list (existing streaming rendering).
+  5. Footer input bar: text input ("Type your question…" placeholder from data) + send icon button.
+- **Behavior**: keep ALL existing chat mechanics — SSE streaming via `/api/profile-chat`, history cap, error toast, prefill events. Restyle/move allowed; breaking the streaming or security wiring is not.
+
+## Left rail — "On this page"
+
+Sticky left navigation on `xl+` (hidden below): a small-caps muted label ("On this page"), then numbered entries (`01`, `02`, …) for the main content sections (work experience, projects, sharing, education & certifications, skills, contact — labels from `profile-data.ts`). Scrollspy: the in-view section's entry is emphasized (bold + accent left bar); entries smooth-scroll to their section anchors. Client component; reuse the scrollspy approach from the frozen v2 draft's `section-rail.tsx` (copy the technique, the draft itself stays untouched).
 
 ## Content model
 
-- All profile copy (name, title, skill groups, services, stats, highlights, project cards, links, **and section headings/subtitles**) lives in one typed data file: `frontend/lib/profile-data.ts`. Components render from it; no copy hard-coded inside JSX — v1 was dinged for hard-coded section headings, don't repeat that.
+- ALL copy — headings, labels, chips, placeholder labels included — lives in `frontend/lib/profile-data.ts` (typed). Components render from it; nothing hard-coded in JSX. Empty arrays/nulls drive placeholder rendering.
 - The same facts must exist in the agent's documents (`backend/app/profile_agent/docs/`) — when updating one, update the other.
 
 ## Components
 
-Place under `frontend/components/profile/` (rewrite freely — v1 has its own frozen copies):
-- `hero.tsx`, `proof-tiles.tsx`, `services.tsx`, `highlights.tsx`, `skills-grid.tsx`, `projects-showcase.tsx`, `contact-band.tsx`, `section-rail.tsx`
-- `chat-box.tsx` + `chat-launcher.tsx` + `chat-prefill-link.tsx` (client components — see `profile-chat-agent` skill)
-- Page itself stays a server component; only chat pieces and the scrollspy rail need `"use client"`.
+Place under `frontend/components/profile/` (rewrite freely — drafts have their own frozen copies):
+- `hero.tsx`, `experience.tsx`, `featured-panel.tsx`, `projects-grid.tsx`, `sharing.tsx`, `education-certs.tsx`, `skills-chips.tsx`, `contact-band.tsx`, `placeholder-card.tsx`, `section-heading.tsx`, `page-rail.tsx` (On-this-page scrollspy)
+- `chat-widget.tsx` (launcher + popover panel, built from the existing `chat-box.tsx`/`chat-launcher.tsx`/`chat-prefill-link.tsx` mechanics) — **do not break** the streaming via `/api/profile-chat`, chips, or prefill events.
+- Page stays a server component; only chat pieces and the scrollspy rail are client components.
 
 ## Design rules
 
-- Mobile-first: reading column is naturally responsive; rail hidden below `xl`; tiles collapse 4→2→1; floating launcher stays.
-- The page is **public** — it must not be added to `middleware.ts` protected paths, and the chat must work logged-out.
-- Keep the existing platform pages reachable (login/signup buttons stay in nav even though the hero CTAs change).
-- Verify visually with the gstack browse tool (screenshot light + dark, desktop + mobile) before declaring done.
+- Wide content container (~`max-w-6xl`) with generous vertical rhythm between H2 sections; card-heavy layout with rounded borders (`rounded-xl border`), small icon tiles beside H2s, chips everywhere for compact metadata.
+- Mobile-first: 2-col grids collapse to 1; hero stacks avatar above text; floating launcher stays.
+- Both themes intentional (site has a theme toggle) — dot grid and gradients must read correctly in light and dark.
+- The page is **public** — never added to `middleware.ts` protected paths; chat works logged-out.
+- Verify visually with the gstack browse binary (light + dark, desktop + mobile) before declaring done.

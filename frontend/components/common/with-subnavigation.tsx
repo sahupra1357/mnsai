@@ -75,6 +75,11 @@ const NAV_ITEMS: Array<NavItem> = [
         subLabel: "Archived first draft of the profile page",
         href: "/drafts/profile-v1",
       },
+      {
+        label: "Profile V2",
+        subLabel: "Archived second draft of the profile page",
+        href: "/drafts/profile-v2",
+      },
     ],
   },
   {

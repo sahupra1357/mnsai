@@ -1,4 +1,4 @@
-import { skillGroups, sections } from "@/lib/profile-data"
+import { skillGroups, sections } from "./profile-data"
 import { SectionHeading } from "./section-heading"
 
 /**

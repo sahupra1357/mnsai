@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react"
-import { services, sections, serviceCtaLabel } from "@/lib/profile-data"
+import { services, sections, serviceCtaLabel } from "./profile-data"
 import { SectionHeading } from "./section-heading"
 import { ChatPrefillLink } from "./chat-prefill-link"
 

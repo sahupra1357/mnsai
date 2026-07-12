@@ -13,7 +13,7 @@ docker compose up -d                  # backend + db (FastAPI on :8000)
 - **Backend**: FastAPI + SQLModel, routes in `backend/app/api/routes/`, registered in `backend/app/api/main.py`. Config via `backend/app/core/config.py` (`settings`). OpenAI SDK is the LLM provider (`settings.OPENAI_DEPLOYMENT_ID`, default `gpt-4o`).
 - **Auth**: HttpOnly cookie JWT via Next.js proxy routes (`app/api/auth/*`). Protected pages guarded by `middleware.ts`. Never put tokens in localStorage.
 - **API calls from browser**: through the generated OpenAPI client (`frontend/src/client/`, DO NOT delete/hand-edit) or through Next.js API proxy routes when a cookie/secret must stay server-side.
-- **Styling**: use existing shadcn components in `components/ui/`; brand color utility is `ui-main` (blue #004AAD). Match the visual language of `app/page.tsx` (cards, radial-gradient hero, muted sections).
+- **Styling**: use existing shadcn components in `components/ui/`; brand palette is **"Teal & warm paper"** (light: warm cream paper + deep teal accent; dark: blue-slate + bright aqua; `ui-main` utility + shadcn `--primary` tokens carry the teal family — defined in `app/globals.css`). Match the visual language of `app/page.tsx`.
 - **Ports**: frontend 3000, backend 8000. CORS: `FRONTEND_HOST=http://localhost:3000`.
 
 ## Active initiative: Profile page + AI chat agent
@@ -31,11 +31,13 @@ Content sources (never invent facts beyond these):
 
 Source-of-truth documents for the chat agent live in `backend/app/profile_agent/docs/` (markdown). The agent must answer **only** from those documents and decline out-of-scope questions.
 
-**Backups & drafts (never edit or delete):**
+**Backups & drafts (never edit or delete; all self-contained, linked in nav Resources dropdown):**
 - `frontend/app/_archive/product-landing.tsx` — the original product landing page (not routed; may be restored later).
-- `frontend/app/drafts/profile-v1/` — frozen 1st draft of the profile page with its own `_components/` copies, routed at `/drafts/profile-v1` and linked in the nav Resources dropdown for comparing against redesigns. The live rebuild may freely rewrite `components/profile/*` and `lib/profile-data.ts`; v1 doesn't depend on them.
+- `frontend/app/drafts/profile-v1/` — frozen 1st profile draft (generic card grid), routed at `/drafts/profile-v1`.
+- `frontend/app/drafts/profile-v2/` — frozen 2nd profile draft ("evidence-driven dossier"), routed at `/drafts/profile-v2`.
+The live rebuild may freely rewrite `components/profile/*` and `lib/profile-data.ts`; the drafts don't depend on them.
 
-**Current status (July 2026):** v2 profile page ("evidence-driven dossier") shipped and graded PASS 98/100. Next: **Phase 2 — the chat agent**. Phase 2 is security-gated: the chat endpoint is public and unauthenticated, so the layered prompt-injection/jailbreak defenses and the automated red-team suite specified in `.claude/skills/profile-chat-agent/SKILL.md` ("Security" + "Testing" sections) are REQUIRED, not optional — a chat build without them fails its definition of done. Key invariant: the endpoint stays privilege-free (no tool calling, no DB writes, no fetching), so a successful jailbreak can only ever produce wrong words, not actions.
+**Current status (July 2026):** chat agent (Phase 2) shipped and graded PASS 97/100 — security layers live, but the `OPENAI_API_KEY` in `.env` is invalid (401), so real completions need a new key. Profile page **v3 redesign** is active: mirror a reference portfolio's format (spec in the profile-page skill, "Design direction v3") with blank placeholders for missing content — never invented facts. Chat security remains gated per `.claude/skills/profile-chat-agent/SKILL.md`; the endpoint stays privilege-free (no tools, no DB writes, no fetching).
 
 **Model policy for the build loop:** orchestrator (main session) runs on **Fable 5**; both subagents (`profile-page-builder`, `profile-page-grader`) run on **Opus** via `model: opus` in their frontmatter — never pass a `model` override when spawning them.
 

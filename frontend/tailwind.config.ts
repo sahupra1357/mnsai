@@ -61,7 +61,10 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
         ui: {
-          main: "#004aad",
+          // Saturated brand fill (deep teal) — matches the --primary token so
+          // filled surfaces (contact band, chat bubbles, launcher) and shadcn
+          // buttons read as one family. White labels stay AA-legible on it.
+          main: "#0f766e",
           accent: "hsl(var(--ui-accent))",
           success: "#48BB78",
           danger: "#E53E3E",

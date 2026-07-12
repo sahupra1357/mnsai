@@ -5,7 +5,7 @@ import {
   sections,
   projectCtaLabel,
   projectBuiltWithLabel,
-} from "@/lib/profile-data"
+} from "./profile-data"
 import { SectionHeading } from "./section-heading"
 
 /**

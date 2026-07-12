@@ -32,22 +32,24 @@ exactly the SCORE / VERDICT / FEEDBACK block.
 1. `.claude/skills/profile-page/SKILL.md` — the spec.
 2. `docs/profile-draft.md` and `docs/resume.md` — the approved facts.
 3. The implementation: `frontend/app/page.tsx`, `frontend/components/profile/`,
-   `frontend/lib/profile-data.ts`, `frontend/middleware.ts`,
-   `frontend/app/_archive/product-landing.tsx`, and the frozen v1 draft
-   `frontend/app/drafts/profile-v1/` (verify both are untouched via git).
+   `frontend/lib/profile-data.ts`, `frontend/middleware.ts`, plus the protected paths
+   `frontend/app/_archive/product-landing.tsx` and the frozen drafts
+   `frontend/app/drafts/profile-v1/` and `frontend/app/drafts/profile-v2/`
+   (verify all are untouched via git).
 
 ## Rubric (score each category, total 100)
 
 | Category | Pts | What to check |
 |---|---|---|
-| Content fidelity | 25 | Every fact on the page traces to profile-draft.md/resume.md; stat-tile numbers countable from the draft; nothing invented; no [NEEDS INPUT] items rendered or faked |
-| Structure & completeness | 25 | All 10 sections from the skill's "Page structure" present in order; ALL copy **including section headings** in `profile-data.ts`, not hard-coded in JSX |
-| Design & conventions | 20 | Implements the skill's **Design direction v2** ("evidence-driven dossier"): editorial reading column, typography-led hero, proof tiles, numbered services/highlights, sticky scrollspy rail on xl+, `ui-main` as sole accent, intentional in light AND dark theme. Verify **visually**: screenshot with the gstack browse binary (`~/.claude/skills/gstack/browse/dist/browse`, read-only usage) at desktop + mobile in both themes and judge the screenshots — a v1-style generic card-grid layout caps this category at 8 |
+| Content fidelity | 25 | Every fact on the page traces to profile-draft.md/resume.md; any number shown is countable from the draft; nothing invented; empty structural slots use the skill's **placeholder rule** (visible blank slot, empty data) — a placeholder is CORRECT, invented filler is not |
+| Structure & completeness | 25 | Every section in the skill's CURRENT "Page structure" present in order (including placeholder sections); ALL copy **including section headings and placeholder labels** in `profile-data.ts`, not hard-coded in JSX |
+| Design & conventions | 20 | Implements the skill's CURRENT "Design direction" section faithfully (v3: reference-format portfolio — avatar hero with gradient headline + chips, icon-tiled H2s, experience dossier format, project cards with status badges + tech chips, education/certs columns, skills chips, card-heavy rounded layout, numbered "On this page" scrollspy rail on xl+, floating messenger-style chat widget as the ONLY chat surface — no in-page chat section), the skill's "Teal & warm paper" color system (light: warm cream paper bg + deep teal accent + teal→cyan gradients; dark: deep blue-slate bg + bright aqua accent; token-layer implementation; AA contrast), no content copied from the reference, intentional in light AND dark theme. Verify **visually**: screenshot with the gstack browse binary (`~/.claude/skills/gstack/browse/dist/browse`, read-only usage) at desktop + mobile in both themes and judge the screenshots — a layout resembling the rejected v1/v2 drafts caps this category at 8 |
 | Code quality | 20 | `npx tsc --noEmit` and `npm run build` pass; server/client component split correct; no edits to `src/client/`; components under `components/profile/` |
-| Safety & regressions | 10 | Page not behind middleware; `app/_archive/product-landing.tsx` untouched; **frozen v1 draft `app/drafts/profile-v1/**` untouched** (git diff clean there) and `/drafts/profile-v1` still renders; nav still links to login/solutions/drafts; backend untouched |
+| Safety & regressions | 10 | Page not behind middleware; `app/_archive/product-landing.tsx` and BOTH frozen drafts (`app/drafts/profile-v1/**`, `app/drafts/profile-v2/**`) untouched (git clean there) and their routes still render; nav still links to login/solutions/drafts; backend and `frontend/app/api/profile-chat/route.ts` untouched; **the live chat still works** (streams via `/api/profile-chat`, chips/prefill functional) |
 
 **Automatic caps:** any invented fact → Content fidelity ≤ 10. Build or typecheck
-failure → Code quality = 0. Missing/modified backup or v1 draft → Safety ≤ 3.
+failure → Code quality = 0. Missing/modified backup or frozen draft, or broken live
+chat → Safety ≤ 3.
 
 ## Output (return to the orchestrator, nothing else)
 
@@ -60,6 +62,6 @@ FEEDBACK:                     # only when REVISE — concrete, actionable, order
 ```
 
 Keep feedback items independently actionable and verifiable — the builder gets your
-list verbatim. Do not include praise, hedging, or suggestions beyond the spec (no scope
-creep: the working chat backend is out of scope this phase; a UI stub is correct, not
-a defect).
+list verbatim. Do not include praise, hedging, or suggestions beyond the spec. No
+scope creep: blank placeholder slots for missing content are correct per the skill,
+not defects; do not ask for content the draft doesn't contain.

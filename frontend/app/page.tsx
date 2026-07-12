@@ -1,48 +1,59 @@
 import WithSubnavigation from "@/components/common/with-subnavigation"
 import { Hero } from "@/components/profile/hero"
-import { ProofTiles } from "@/components/profile/proof-tiles"
-import { SectionRail } from "@/components/profile/section-rail"
 import { SectionHeading } from "@/components/profile/section-heading"
-import { Services } from "@/components/profile/services"
-import { Highlights } from "@/components/profile/highlights"
-import { ProjectsShowcase } from "@/components/profile/projects-showcase"
-import { SkillsGrid } from "@/components/profile/skills-grid"
-import { ChatBox } from "@/components/profile/chat-box"
-import { ChatLauncher } from "@/components/profile/chat-launcher"
+import { Experience } from "@/components/profile/experience"
+import { ProjectsGrid } from "@/components/profile/projects-grid"
+import { Sharing } from "@/components/profile/sharing"
+import { EducationCerts } from "@/components/profile/education-certs"
+import { SkillsChips } from "@/components/profile/skills-chips"
+import { PageRail } from "@/components/profile/page-rail"
+import { ChatWidget } from "@/components/profile/chat-widget"
 import { ContactBand } from "@/components/profile/contact-band"
 import { sections, profile, footer } from "@/lib/profile-data"
 
 /**
- * v2 profile homepage — "evidence-driven dossier". Server component; only the
- * chat pieces and the scrollspy rail opt into "use client". All copy lives in
- * lib/profile-data.ts. Page stays public (not in middleware protected paths).
+ * v3 profile homepage — "reference-format portfolio". Server component; only the
+ * scrollspy rail and the floating chat widget opt into "use client". All copy
+ * lives in lib/profile-data.ts, and empty arrays/nulls there drive the blank
+ * placeholder slots. The chat exists ONLY as the floating widget — there is no
+ * in-page chat section. Page stays public (not in middleware protected paths).
  */
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="dossier-dots flex min-h-screen flex-col bg-background">
       <WithSubnavigation />
 
       <main className="flex-1">
         <Hero />
-        <ProofTiles />
 
-        {/* Editorial body: narrow reading column + sticky rail on xl+ */}
         <div className="mx-auto max-w-6xl px-6">
-          <div className="xl:flex xl:gap-14">
-            <div className="pt-16 xl:pt-20">
-              <SectionRail />
-            </div>
+          <div className="flex gap-10 py-20 sm:py-24">
+            <PageRail />
 
-            <div className="mx-auto min-w-0 max-w-3xl space-y-24 py-16 xl:mx-0 xl:flex-1 xl:py-20">
-              <Services />
-              <Highlights />
-              <ProjectsShowcase />
-              <SkillsGrid />
+            <div className="min-w-0 flex-1 space-y-24">
+              <section id={sections.work.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.work} />
+                <Experience />
+              </section>
 
-              {/* Chat (UI stub until the chat-agent phase) */}
-              <section id={sections.chat.id} className="scroll-mt-24">
-                <SectionHeading meta={sections.chat} />
-                <ChatBox />
+              <section id={sections.projects.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.projects} />
+                <ProjectsGrid />
+              </section>
+
+              <section id={sections.sharing.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.sharing} />
+                <Sharing />
+              </section>
+
+              <section id={sections.learning.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.learning} />
+                <EducationCerts />
+              </section>
+
+              <section id={sections.skills.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.skills} />
+                <SkillsChips />
               </section>
             </div>
           </div>
@@ -52,7 +63,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border px-6 py-10">
+      <footer className="border-t border-border bg-background px-6 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} {profile.name}. All rights
@@ -64,7 +75,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <ChatLauncher />
+      <ChatWidget />
     </div>
   )
 }

@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import { rail, sectionOrder } from "@/lib/profile-data"
 
 /**
- * Slim sticky table-of-contents rail (xl+ only). Uses IntersectionObserver
- * scrollspy to highlight the section in view and pins an "Ask my AI assistant"
- * CTA. Hidden below xl — the reading column stands on its own on small screens.
+ * Sticky "On this page" rail (xl+ only, hidden below). IntersectionObserver
+ * scrollspy highlights the section currently in view (bold + accent left bar);
+ * numbered entries smooth-scroll to their section anchors. Copy is data-driven
+ * from `profile-data.ts`. Technique adapted from the frozen v2 draft's
+ * section-rail (the draft itself is untouched).
  */
-export function SectionRail() {
+export function PageRail() {
   const [active, setActive] = useState<string>(sectionOrder[0]?.id ?? "")
 
   useEffect(() => {
@@ -31,10 +33,15 @@ export function SectionRail() {
     return () => observer.disconnect()
   }, [])
 
+  function onClick(e: React.MouseEvent, id: string) {
+    e.preventDefault()
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   return (
     <nav
       aria-label={rail.tocLabel}
-      className="sticky top-24 hidden w-52 shrink-0 xl:block"
+      className="sticky top-28 hidden w-48 shrink-0 self-start xl:block"
     >
       <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
         {rail.tocLabel}
@@ -46,6 +53,8 @@ export function SectionRail() {
             <li key={s.id} className="-ml-px">
               <a
                 href={`#${s.id}`}
+                onClick={(e) => onClick(e, s.id)}
+                aria-current={isActive ? "true" : undefined}
                 className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-4 text-sm transition-colors ${
                   isActive
                     ? "border-ui-accent font-semibold text-foreground"
@@ -65,13 +74,6 @@ export function SectionRail() {
           )
         })}
       </ul>
-
-      <a
-        href="#chat"
-        className="mt-6 block rounded-md bg-ui-main px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#003d8f]"
-      >
-        {rail.ctaLabel}
-      </a>
     </nav>
   )
 }

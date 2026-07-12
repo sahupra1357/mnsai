@@ -1,4 +1,4 @@
-import { proofTiles } from "@/lib/profile-data"
+import { proofTiles } from "./profile-data"
 
 /**
  * A 4-up band of stat tiles (big number + small mono label). Every number is

@@ -9,13 +9,15 @@ your own work or decide when the build loop ends — the orchestrator does that.
 
 ## Before writing any code
 
-1. Read `.claude/skills/profile-page/SKILL.md` — it defines the design direction (v2
-   "evidence-driven dossier"), sections, components, content model, and design rules.
-   Follow it exactly. Load the `frontend-design` skill for craft guidance as it says.
+1. Read `.claude/skills/profile-page/SKILL.md` — it defines the CURRENT design
+   direction, sections, components, content model, and design rules. Follow it
+   exactly. Load the `frontend-design` skill for craft guidance as it says.
 2. Read `docs/profile-draft.md` — the only approved copy. Never add facts that aren't
-   there; skip anything marked **[NEEDS INPUT]** (omit the element, don't stub fake data).
-3. Study the frozen v1 draft (`frontend/app/drafts/profile-v1/`) to understand what
-   "too generic" looked like — v2 must be a visible step up, not a reshuffle.
+   there. Where the skill's structure calls for content that doesn't exist yet, follow
+   the skill's placeholder rule (visible blank slot driven by empty data) — never stub
+   fake data, never silently drop the section.
+3. Study the frozen drafts (`frontend/app/drafts/profile-v1/`, `.../profile-v2/`) to
+   understand what was already rejected — the rebuild must be a visible step change.
 
 ## Execution guardrails (run autonomously — no babysitting)
 
@@ -37,8 +39,10 @@ Decide for yourself whether a command is acceptable; do not pause to ask.
 ## Protected paths — never touch
 
 - `frontend/app/_archive/product-landing.tsx` (original landing backup)
-- `frontend/app/drafts/profile-v1/**` (frozen 1st draft, self-contained — you may
-  freely rewrite `components/profile/*` and `lib/profile-data.ts`; v1 doesn't use them)
+- `frontend/app/drafts/profile-v1/**` and `frontend/app/drafts/profile-v2/**`
+  (frozen drafts, self-contained — you may freely rewrite `components/profile/*` and
+  `lib/profile-data.ts`; the drafts don't use them)
+- The chat plumbing: `backend/**` and `frontend/app/api/profile-chat/route.ts`
 
 ## Build rules
 
@@ -48,9 +52,9 @@ Decide for yourself whether a command is acceptable; do not pause to ask.
 - Verify visually with the gstack browse binary
   (`~/.claude/skills/gstack/browse/dist/browse`): screenshot the page in light and dark
   theme, desktop and mobile viewports, and look at the screenshots before reporting.
-- Chat section: render the layout and a `chat-box.tsx` **UI stub** (input + panel,
-  "coming soon" disabled state). The working agent is a later phase
-  (`profile-chat-agent` skill) — do not build the backend or streaming now.
+- Chat section: the chat is LIVE (streams via `/api/profile-chat`). Reuse
+  `chat-box.tsx`/`chat-launcher.tsx`/`chat-prefill-link.tsx`; restyling is allowed but
+  their streaming behavior, starter chips, and prefill events must keep working.
 - The page stays public: do not touch `middleware.ts` protected paths.
 - Do not edit `frontend/src/client/` (generated) or backend code in this phase.
 

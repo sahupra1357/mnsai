@@ -1,71 +1,113 @@
-import { ArrowRight, Mail } from "lucide-react"
-import { profile, credentials, heroCtas } from "@/lib/profile-data"
+import Image from "next/image"
+import { Sparkles } from "lucide-react"
+import {
+  profile,
+  heroChips,
+  featuredIn,
+  featuredInLabel,
+  featuredInPlaceholder,
+} from "@/lib/profile-data"
 
 /**
- * Typography-led hero (v2 "dossier"). No boxed card: a mono eyebrow, the name set
- * huge and tight in the display face, a large muted dek, and a byline row of
- * credential chips over a faint theme-aware dot-grid. Server component — the
- * primary CTA is a plain in-page anchor to the chat section.
+ * v3 reference-format hero: two columns. Left is a large circular avatar — an
+ * initials ring placeholder until a headshot exists (profile.headshot is null).
+ * Right is a greeting line, a huge gradient display headline of the specialty,
+ * bold foreground descriptor lines, role-descriptor pill chips, and an
+ * "As featured in" slot that renders a blank dashed placeholder (no press yet).
+ * Server component; the dot-grid background is theme-aware.
  */
 export function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-border">
-      {/* Dot-grid texture, masked so it fades before the fold */}
+    <section className="relative overflow-hidden border-b border-border bg-background">
       <div
         aria-hidden
         className="dossier-dots dossier-dots-mask pointer-events-none absolute inset-0"
       />
-      <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-20 sm:pt-28">
-        <div className="max-w-3xl">
-          <p className="font-mono text-xs font-medium uppercase tracking-[0.2em] text-ui-accent">
-            {profile.eyebrow}
+      {/* Soft brand wash behind the hero */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-ui-accent/[0.07] via-transparent to-cyan-500/[0.06]"
+      />
+
+      <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 pb-20 pt-20 sm:pt-24 lg:flex-row lg:items-center lg:gap-14">
+        {/* Avatar */}
+        <div className="relative shrink-0">
+          <div className="relative flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-ui-accent/20 to-cyan-400/20 p-1.5 shadow-xl shadow-ui-accent/10 ring-1 ring-border sm:h-48 sm:w-48">
+            {profile.headshot ? (
+              <Image
+                src={profile.headshot}
+                alt={profile.name}
+                fill
+                className="rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#06b6d4]">
+                <span className="font-display text-5xl font-bold tracking-tight text-white sm:text-6xl">
+                  {profile.initials}
+                </span>
+              </div>
+            )}
+          </div>
+          <span className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-ui-main text-white shadow-lg ring-4 ring-background">
+            <Sparkles className="h-4 w-4" />
+          </span>
+        </div>
+
+        {/* Text column */}
+        <div className="min-w-0 flex-1 text-center lg:text-left">
+          <p className="text-base text-muted-foreground sm:text-lg">
+            {profile.greeting}
           </p>
 
-          <h1 className="mt-5 font-display text-5xl font-bold leading-[0.98] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-            {profile.name}
+          <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="bg-gradient-to-r from-[#0f766e] via-[#0d9488] to-[#0891b2] bg-clip-text text-transparent dark:from-[#2dd4bf] dark:via-[#22d3ee] dark:to-[#38bdf8]">
+              {profile.headlineAccent}
+            </span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            {profile.valueProposition}
+          <p className="mt-4 font-display text-2xl font-semibold leading-snug tracking-tight text-foreground sm:text-3xl">
+            {profile.headlineLines.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </p>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground/80 sm:text-base">
+
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground lg:mx-0">
             {profile.supportingLine}
           </p>
 
-          {/* CTAs */}
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <a
-              href="#chat"
-              className="group inline-flex items-center gap-2 rounded-md bg-ui-main px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#003d8f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-accent"
-            >
-              {heroCtas.primary}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-            <a
-              href={`mailto:${profile.email}`}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-ui-accent/40 hover:text-ui-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-accent"
-            >
-              <Mail className="h-4 w-4" />
-              {heroCtas.secondary}
-            </a>
-          </div>
-
-          {/* Credential byline */}
-          <ul className="mt-10 flex flex-wrap gap-x-5 gap-y-2.5 border-t border-border/70 pt-6">
-            {credentials.map((c) => {
-              const Icon = c.icon
-              return (
-                <li
-                  key={c.short}
-                  title={c.full}
-                  className="flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  <Icon className="h-3.5 w-3.5 text-ui-accent" />
-                  {c.short}
-                </li>
-              )
-            })}
+          {/* Role-descriptor chips */}
+          <ul className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-start">
+            {heroChips.map((chip) => (
+              <li
+                key={chip}
+                className="rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm"
+              >
+                {chip}
+              </li>
+            ))}
           </ul>
+
+          {/* As featured in — blank placeholder until press exists */}
+          <div className="mt-10">
+            <p className="text-center font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70 lg:text-left">
+              {featuredInLabel}
+            </p>
+            {featuredIn.length === 0 ? (
+              <div className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-3 text-sm text-muted-foreground/70 lg:justify-start">
+                {featuredInPlaceholder}
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-6 lg:justify-start">
+                {featuredIn.map((item) => (
+                  <span key={item.name} className="text-sm font-semibold text-muted-foreground">
+                    {item.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>

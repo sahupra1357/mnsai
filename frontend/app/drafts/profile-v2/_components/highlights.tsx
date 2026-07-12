@@ -1,4 +1,4 @@
-import { highlights, sections } from "@/lib/profile-data"
+import { highlights, sections } from "./profile-data"
 import { SectionHeading } from "./section-heading"
 
 /**
