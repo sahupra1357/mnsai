@@ -8,3 +8,7 @@ htmlcov
 .venv
 env
 application_default_credentials.json
+.pytest_cache/
+
+# Unused / redundant files (flagged, kept per request — not deleted)
+app/alembic/env.py_autogenerate

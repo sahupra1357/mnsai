@@ -13,3 +13,6 @@ node_modules/
 .claude/settings.local.json
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
+
+# Kept locally only — not tracked in the repo (contains personal resume/profile content)
+docs/

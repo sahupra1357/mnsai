@@ -6,20 +6,14 @@ services:
   # etc. To enable it, update .env, set:
   # DOMAIN=localhost.tiangolo.com
   proxy:
+    # Opt-in only: not started by a plain `docker compose up`.
+    # Start it with: docker compose --profile proxy up
+    profiles: ["proxy"]
     image: traefik:3.0
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "80:80"
       - "8090:8080"
-    # Duplicate the command from docker-compose.yml to add --api.insecure=true
     command:
-      # Enable Docker in Traefik, so that it reads labels from Docker services
-      - --providers.docker
-      # Add a constraint to only use services with the label for this stack
-      - --providers.docker.constraints=Label(`traefik.constraint-label`, `traefik-public`)
-      # Do not expose all Docker services, only the ones explicitly exposed
-      - --providers.docker.exposedbydefault=false
       # Create an entrypoint "http" listening on port 80
       - --entrypoints.http.address=:80
       # Create an entrypoint "https" listening on port 443
@@ -29,7 +23,7 @@ services:
       # Enable the Traefik log, for configurations and errors
       - --log
       # Enable debug logging for local development
-      - --log.level=DEBUG
+      - --log.level=ERROR
       # Enable the Dashboard and API
       - --api
       # Enable the Dashboard and API in insecure mode for local development
@@ -45,10 +39,27 @@ services:
       - traefik-public
       - default
 
-  # db:
-  #   restart: "no"
-  #   ports:
-  #     - "5432:5432"
+  # Local Dockerized Postgres. Uses the same POSTGRES_* creds from .env, so the
+  # backend connects to it by overriding POSTGRES_SERVER=db below (instead of the
+  # external Render host). Data persists in the app-db-data named volume.
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER?Variable not set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Variable not set}
+      POSTGRES_DB: ${POSTGRES_DB?Variable not set}
+    ports:
+      # Host 5432 is often taken by a local Postgres; publish on 5433.
+      # The backend still reaches it internally as db:5432 over the compose network.
+      - "5433:5432"
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # adminer:
   #   restart: "no"
@@ -61,6 +72,9 @@ services:
       - "8000:8000"
     build:
       context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
     # command: sleep infinity  # Infinite loop to keep container alive doing nothing
     command: bash -c "bash scripts/prestart.sh && fastapi run --reload app/main.py"
     develop:
@@ -77,6 +91,9 @@ services:
     volumes:
       - ./backend/htmlcov:/app/htmlcov:/app/config/application_default_credentials.json
     environment:
+      # Point the backend at the local Dockerized Postgres (service name "db")
+      # instead of the external host in .env. Creds still come from .env.
+      POSTGRES_SERVER: db
       SMTP_HOST: "mailcatcher"
       SMTP_PORT: "1025"
       SMTP_TLS: "false"
@@ -84,6 +101,7 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /app/config/application_default_credentials.json
 
   mailcatcher:
+    profiles: ["mailcatcher"]
     image: schickling/mailcatcher
     ports:
       - "1080:1080"
@@ -102,6 +120,7 @@ services:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
 
   playwright:
+    profiles: ["playwright"]
     build:
       context: ./frontend
       dockerfile: Dockerfile.playwright
@@ -119,12 +138,15 @@ services:
       - MAILCATCHER_HOST=http://mailcatcher:1080
       # For the reports when run locally
       - PLAYWRIGHT_HTML_HOST=0.0.0.0
-      - CI=${CI}
+      - CI=${CI:-}
     volumes:
       - ./frontend/blob-report:/app/blob-report
       - ./frontend/test-results:/app/test-results
     ports:
       - 9323:9323
+
+volumes:
+  app-db-data:
 
 networks:
   traefik-public:
