@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import UserMenu from "./user-menu"
-import useAuth from "@/hooks/use-auth"
 
 interface NavItem {
   label: string
@@ -90,8 +89,8 @@ const NAV_ITEMS: Array<NavItem> = [
 
 export default function WithSubnavigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { user } = useAuth()
-  const logoHref = user ? "/dashboard" : "/"
+  // Logo always returns to the public profile/portfolio homepage.
+  const logoHref = "/"
 
   return (
     <nav className="border-b border-border bg-background">
