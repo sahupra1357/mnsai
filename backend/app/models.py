@@ -184,3 +184,29 @@ class BlogPostPublic(BlogPostBase):
 class BlogPostsPublic(SQLModel):
     data: list[BlogPostPublic]
     count: int
+
+
+# Profile image (headshot shown in the public profile hero)
+class ProfileImage(SQLModel, table=True):
+    """Single-row-per-slot store for profile images.
+
+    Bytes live in the database rather than on disk so the image survives
+    container restarts without a mounted volume. Only one row per `slot`
+    (currently just "headshot") is ever kept.
+    """
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    slot: str = Field(max_length=50, unique=True, index=True)
+    content_type: str = Field(max_length=100)
+    filename: str | None = Field(default=None, max_length=255)
+    data: bytes
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProfileImageMeta(SQLModel):
+    """Public metadata about the headshot — lets the page decide whether to
+    render the photo or the initials placeholder, without fetching bytes."""
+
+    has_image: bool
+    content_type: str | None = None
+    updated_at: datetime | None = None

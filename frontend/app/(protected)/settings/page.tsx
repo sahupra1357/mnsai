@@ -1,44 +1,60 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query"
-import type { UserPublic } from "@/src/client"
+import useAuth from "@/hooks/use-auth"
 import Appearance from "@/components/user-settings/appearance"
 import ChangePassword from "@/components/user-settings/change-password"
 import DeleteAccount from "@/components/user-settings/delete-account"
 import UserInformation from "@/components/user-settings/user-information"
+import ProfilePhoto from "@/components/user-settings/profile-photo"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const tabsConfig = [
+interface SettingsTab {
+  title: string
+  component: React.ComponentType
+  /** Rendered only for superusers. */
+  superuserOnly?: boolean
+  /** Hidden from superusers. */
+  hideForSuperuser?: boolean
+}
+
+const tabsConfig: SettingsTab[] = [
   { title: "My profile", component: UserInformation },
   { title: "Password", component: ChangePassword },
   { title: "Appearance", component: Appearance },
-  { title: "Danger zone", component: DeleteAccount },
+  // The public profile hero's headshot — only superusers own that page.
+  { title: "Profile photo", component: ProfilePhoto, superuserOnly: true },
+  // Superusers can't delete their own account.
+  { title: "Danger zone", component: DeleteAccount, hideForSuperuser: true },
 ]
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
-  const finalTabs = currentUser?.is_superuser
-    ? tabsConfig.slice(0, 3)
-    : tabsConfig
+  // useAuth (a real query) rather than a one-shot cache read, so the tab list
+  // settles once the current user resolves instead of on first paint.
+  const { user: currentUser } = useAuth()
+  const isSuperuser = Boolean(currentUser?.is_superuser)
+  const finalTabs = tabsConfig.filter((tab) =>
+    isSuperuser ? !tab.hideForSuperuser : !tab.superuserOnly,
+  )
 
   return (
     <div className="container mx-auto max-w-full">
       <h1 className="text-2xl font-semibold py-12 text-center md:text-left">
         User Settings
       </h1>
-      <Tabs defaultValue="0">
+      {/* Keyed by title, not index, so the selected tab survives the list
+          changing when the current user resolves. */}
+      <Tabs defaultValue={tabsConfig[0].title}>
         <TabsList>
-          {finalTabs.map((tab, index) => (
-            <TabsTrigger key={index} value={String(index)}>
+          {finalTabs.map((tab) => (
+            <TabsTrigger key={tab.title} value={tab.title}>
               {tab.title}
             </TabsTrigger>
           ))}
         </TabsList>
-        {finalTabs.map((tab, index) => {
+        {finalTabs.map((tab) => {
           const Component = tab.component
           return (
-            <TabsContent key={index} value={String(index)}>
+            <TabsContent key={tab.title} value={tab.title}>
               <Component />
             </TabsContent>
           )

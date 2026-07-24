@@ -46,14 +46,14 @@ export default function HomePage() {
                 <Sharing />
               </section>
 
-              <section id={sections.learning.id} className="scroll-mt-24">
-                <SectionHeading meta={sections.learning} />
-                <EducationCerts />
-              </section>
-
               <section id={sections.skills.id} className="scroll-mt-24">
                 <SectionHeading meta={sections.skills} />
                 <SkillsChips />
+              </section>
+
+              <section id={sections.learning.id} className="scroll-mt-24">
+                <SectionHeading meta={sections.learning} />
+                <EducationCerts />
               </section>
             </div>
           </div>

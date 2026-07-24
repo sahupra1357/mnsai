@@ -129,3 +129,43 @@ def delete_blog_post(*, session: Session, post_id: uuid.UUID) -> None:
     if post:
         session.delete(post)
         session.commit()
+
+# Profile image
+
+from app.models import ProfileImage
+
+
+def get_profile_image(*, session: Session, slot: str) -> ProfileImage | None:
+    return session.exec(
+        select(ProfileImage).where(ProfileImage.slot == slot)
+    ).first()
+
+
+def upsert_profile_image(
+    *,
+    session: Session,
+    slot: str,
+    data: bytes,
+    content_type: str,
+    filename: str | None = None,
+) -> ProfileImage:
+    db_image = get_profile_image(session=session, slot=slot)
+    if db_image is None:
+        db_image = ProfileImage(slot=slot)
+    db_image.data = data
+    db_image.content_type = content_type
+    db_image.filename = filename
+    db_image.updated_at = datetime.utcnow()
+    session.add(db_image)
+    session.commit()
+    session.refresh(db_image)
+    return db_image
+
+
+def delete_profile_image(*, session: Session, slot: str) -> bool:
+    db_image = get_profile_image(session=session, slot=slot)
+    if db_image is None:
+        return False
+    session.delete(db_image)
+    session.commit()
+    return True

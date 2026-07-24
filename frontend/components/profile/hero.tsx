@@ -7,16 +7,24 @@ import {
   featuredInLabel,
   featuredInPlaceholder,
 } from "@/lib/profile-data"
+import { getProfileHeadshotUrl } from "@/lib/profile-image"
 
 /**
- * v3 reference-format hero: two columns. Left is a large circular avatar — an
- * initials ring placeholder until a headshot exists (profile.headshot is null).
- * Right is a greeting line, a huge gradient display headline of the specialty,
- * bold foreground descriptor lines, role-descriptor pill chips, and an
- * "As featured in" slot that renders a blank dashed placeholder (no press yet).
- * Server component; the dot-grid background is theme-aware.
+ * v3 reference-format hero: two columns. Left is a large circular avatar — the
+ * headshot uploaded in User Settings → Profile photo, falling back to the
+ * static `profile.headshot` path and then to an initials ring when neither
+ * exists. Right is a greeting line, a huge gradient display headline of the
+ * specialty, bold foreground descriptor lines, role-descriptor pill chips, and
+ * an "As featured in" slot that renders a blank dashed placeholder (no press
+ * yet). Server component; the dot-grid background is theme-aware.
  */
-export function Hero() {
+export async function Hero() {
+  // Resolved on the server so a missing photo renders the initials ring rather
+  // than a broken image. `unoptimized` because the bytes come from the API
+  // proxy, already sized for an avatar, and are cache-busted by ?v=.
+  const uploadedHeadshot = await getProfileHeadshotUrl()
+  const headshot = uploadedHeadshot ?? profile.headshot
+
   return (
     <section className="relative overflow-hidden border-b border-border bg-background">
       <div
@@ -33,12 +41,14 @@ export function Hero() {
         {/* Avatar */}
         <div className="relative shrink-0">
           <div className="relative flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-ui-accent/20 to-cyan-400/20 p-1.5 shadow-xl shadow-ui-accent/10 ring-1 ring-border sm:h-48 sm:w-48">
-            {profile.headshot ? (
+            {headshot ? (
               <Image
-                src={profile.headshot}
+                src={headshot}
                 alt={profile.name}
                 fill
-                className="rounded-full object-cover"
+                unoptimized={Boolean(uploadedHeadshot)}
+                sizes="(min-width: 640px) 12rem, 10rem"
+                className="rounded-full object-cover p-1.5"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#06b6d4]">

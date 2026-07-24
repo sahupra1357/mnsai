@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import items, login, oauth, private, users, utils, extractorg, extractorgpt, extractorts, blog, profile_chat
+from app.api.routes import items, login, oauth, private, users, utils, extractorg, extractorgpt, extractorts, blog, profile_chat, profile_image
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -14,6 +14,7 @@ api_router.include_router(extractorgpt.router)
 api_router.include_router(extractorts.router)
 api_router.include_router(blog.router)
 api_router.include_router(profile_chat.router)
+api_router.include_router(profile_image.router)
 
 
 if settings.ENVIRONMENT == "local":

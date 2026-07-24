@@ -17,7 +17,7 @@ Both drafts are self-contained (`_components/` copies) and linked from the nav R
 
 ## Design direction v3 — reference-format portfolio
 
-v3 mirrors the **format/structure** of a specific reference portfolio homepage (a personal AI-engineer portfolio: avatar hero → work experience dossiers → projects grid → social proof → education/certifications → skills → contact). Screenshots of the reference are in the session scratchpad (`v3ref-*.png`) if present; otherwise follow this spec — it is complete.
+v3 mirrors the **format/structure** of a specific reference portfolio homepage (a personal AI-engineer portfolio: avatar hero → work experience dossiers → projects grid → social proof → skills → education/certifications → contact). Screenshots of the reference are in the session scratchpad (`v3ref-*.png`) if present; otherwise follow this spec — it is complete.
 
 **Hard rules — format only:**
 - **DO NOT COPY any content** from the reference: no phrases, names, numbers, logos, or copy. Structure, layout patterns, and component shapes only.
@@ -36,12 +36,12 @@ Implemented at the token layer (shadcn CSS variables in `app/globals.css` light 
 ## Page structure (top to bottom)
 
 1. **Nav** — keep `WithSubnavigation` (Product/Solutions/Resources dropdowns, drafts links, auth buttons intact).
-2. **Hero** — two-column: left, a large circular avatar (placeholder ring with initials "PS" until a headshot exists); right, a small greeting line ("Hi, I'm Pradeep Sahu"), then a huge headline of the professional title with a blue gradient treatment, then 1–2 bold descriptor lines from the value proposition, then a row of small pill chips (role descriptors from the draft). Below: an "As featured in" slot — **blank placeholder** (no press yet). Dot-grid hero background, subtle gradient wash, theme-aware.
+2. **Hero** — two-column: left, a large circular avatar (see "Headshot" below — an initials "PS" ring until a headshot is uploaded); right, a small greeting line ("Hi, I'm Pradeep Sahu"), then a huge headline of the professional title with a blue gradient treatment, then 1–2 bold descriptor lines from the value proposition, then a row of small pill chips (role descriptors from the draft). Below: an "As featured in" slot — **blank placeholder** (no press yet). Dot-grid hero background, subtle gradient wash, theme-aware.
 3. **Work Experience** — H2 with a small icon tile. Entry format: org logo slot + org name + location line, role title in accent color, date range line, short summary paragraph, bullet list of accomplishments; optional client-logo strip and testimonial quote card per entry. Content: the resume has **no employer names/dates**, so render ONE placeholder entry (dashed card, "Experience details coming soon") PLUS a "Selected work" sub-block that lists the five approved experience highlights as accomplishment bullets without attribution. The featured-project panel slot (big card with icon, title, description, icon-bullet list, right-hand column of 2–3 stat tiles) IS renderable: use the proof-tile numbers from the draft.
 4. **Projects** — H2 grid (2-col on lg): the three live demos as project cards — title, status badge ("Live demo"), description, tech-stack chips, footer link to the running tool. Plus one wider intro panel describing this platform itself (the profile + chat agent system) as a working project, with the chat agent linked — facts only from the draft/repo. Additional project-card slots: none — do not pad with placeholders here, the grid just has 4 items.
 5. **Sharing / social proof** — H2 with 2-col card slots for posts/talks. No approved content → the section renders with 2 blank placeholder cards ("Posts and talks coming soon").
-6. **Education & Certifications** — two columns side by side. Education: one card (year slot blank, institution, degree from the draft). Certifications: stacked rows — the 3 certifications (year slots blank, issuer names from the draft).
-7. **Skills** — H2 with the five draft groups as subsections, items as chip clusters (not checklists).
+6. **Skills** — H2 with the five draft groups as subsections, items as chip clusters (not checklists). Skills come **before** education & certifications: the capability story leads, credentials back it up.
+7. **Education & Certifications** — two columns side by side. Education: one card (year slot blank, institution, degree from the draft). Certifications: stacked rows — the 3 certifications (year slots blank, issuer names from the draft).
 8. **Let's talk** — contact band: heading, email button, LinkedIn button (from the draft); GitHub slot omitted until provided.
 9. **Footer** — keep.
 
@@ -61,7 +61,15 @@ Format modeled on a messenger-style popover (structure only, wording ours from `
 
 ## Left rail — "On this page"
 
-Sticky left navigation on `xl+` (hidden below): a small-caps muted label ("On this page"), then numbered entries (`01`, `02`, …) for the main content sections (work experience, projects, sharing, education & certifications, skills, contact — labels from `profile-data.ts`). Scrollspy: the in-view section's entry is emphasized (bold + accent left bar); entries smooth-scroll to their section anchors. Client component; reuse the scrollspy approach from the frozen v2 draft's `section-rail.tsx` (copy the technique, the draft itself stays untouched).
+Sticky left navigation on `xl+` (hidden below): a small-caps muted label ("On this page"), then numbered entries (`01`, `02`, …) for the main content sections (work experience, projects, sharing, skills, education & certifications, contact — labels from `profile-data.ts`). Scrollspy: the in-view section's entry is emphasized (bold + accent left bar); entries smooth-scroll to their section anchors. Client component; reuse the scrollspy approach from the frozen v2 draft's `section-rail.tsx` (copy the technique, the draft itself stays untouched).
+
+## Headshot (hero avatar)
+
+The headshot is **uploaded data, not code** — Pradeep manages it at `/settings` → "Profile photo" (superuser-only tab, `components/user-settings/profile-photo.tsx`). Do not reintroduce a hard-coded image path or remove this wiring when rebuilding the hero:
+
+- Bytes live in the DB (`ProfileImage` table, slot `"headshot"`), served by `backend/app/api/routes/profile_image.py`: public `GET /api/v1/profile/image` + `GET /api/v1/profile/image/meta`, superuser-only `POST`/`DELETE`. Uploads are validated by magic bytes (JPEG/PNG/WebP, ≤5 MB) — never by the client-supplied content type.
+- `Hero` is an **async server component**: it calls `getProfileHeadshotUrl()` from `lib/profile-image.ts`, which reads `/meta` and returns a `?v=<updated_at>` cache-busted proxy URL, or `null`. Resolving server-side is what keeps a missing photo from rendering as a broken `<img>`.
+- Fallback order: uploaded photo → the static `profile.headshot` path → the "PS" initials ring. The initials ring stays the placeholder per the placeholder rule.
 
 ## Content model
 

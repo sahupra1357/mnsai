@@ -1,2 +1,6 @@
 node_modules
 dist
+# Local build output must never enter the image: `next build` reuses
+# .next/cache/fetch-cache, which would bake stale server-fetch responses
+# (e.g. the profile headshot lookup) into the prerendered pages.
+.next

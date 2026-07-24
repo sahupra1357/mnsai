@@ -41,7 +41,11 @@ export const profile = {
   name: "Pradeep Sahu",
   /** Initials shown in the avatar ring until a headshot exists. */
   initials: "PS",
-  /** Headshot: [NEEDS INPUT] — null renders the initials-ring placeholder. */
+  /**
+   * Static fallback headshot path. The live headshot is uploaded at
+   * /settings → "Profile photo" (see lib/profile-image.ts); this is only a
+   * second fallback, and null renders the initials-ring placeholder.
+   */
   headshot: null as string | null,
   greeting: "Hi, I'm Pradeep Sahu,",
   /** Gradient display headline — the specialty that defines the work. */
@@ -160,8 +164,8 @@ export const sectionOrder: RailEntry[] = [
   { id: sections.work.id, navLabel: sections.work.navLabel, index: "01" },
   { id: sections.projects.id, navLabel: sections.projects.navLabel, index: "02" },
   { id: sections.sharing.id, navLabel: sections.sharing.navLabel, index: "03" },
-  { id: sections.learning.id, navLabel: sections.learning.navLabel, index: "04" },
-  { id: sections.skills.id, navLabel: sections.skills.navLabel, index: "05" },
+  { id: sections.skills.id, navLabel: sections.skills.navLabel, index: "04" },
+  { id: sections.learning.id, navLabel: sections.learning.navLabel, index: "05" },
   { id: sections.contact.id, navLabel: sections.contact.navLabel, index: "06" },
 ]
 

@@ -32,6 +32,8 @@ export function ChatWidget() {
   const [isStreaming, setIsStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const launcherRef = useRef<HTMLButtonElement>(null)
 
   // Prefill / open events from external CTAs (e.g. the platform project panel).
   useEffect(() => {
@@ -61,6 +63,27 @@ export function ChatWidget() {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
+  }, [open])
+
+  // Close when clicking anywhere outside the panel. Two exclusions: the
+  // launcher, whose own toggle stays authoritative (otherwise it would close
+  // here and immediately reopen on click), and sonner's toast portal, so
+  // dismissing a chat error doesn't take the conversation with it. Messages
+  // survive closing, so reopening resumes where the visitor left off.
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node | null
+      if (!target) return
+      if (panelRef.current?.contains(target)) return
+      if (launcherRef.current?.contains(target)) return
+      const el =
+        target instanceof Element ? target : (target.parentElement ?? null)
+      if (el?.closest("[data-sonner-toaster]")) return
+      setOpen(false)
+    }
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
   }, [open])
 
   function prefill(question: string) {
@@ -171,6 +194,7 @@ export function ChatWidget() {
       {/* Popover panel */}
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
           aria-label={chatWidget.name}
           className="fixed inset-0 z-50 flex flex-col overflow-hidden border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[560px] sm:max-h-[calc(100vh-8rem)] sm:w-[380px] sm:rounded-2xl sm:border"
@@ -296,6 +320,7 @@ export function ChatWidget() {
 
       {/* Launcher */}
       <button
+        ref={launcherRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? chatWidget.launcherCloseLabel : chatWidget.launcherOpenLabel}
