@@ -13,24 +13,34 @@ function FileUploaderTS() {
   const [filePath, setFilePath] = useState("")
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("json")
   const [documentType, setDocumentType] = useState("")
-  const [responseText, setResponseText] = useState("")
+  // Cache each format's result separately so toggling JSON ⇄ Markdown keeps
+  // whatever has already been extracted instead of wiping it.
+  const [jsonText, setJsonText] = useState("")
+  const [markdownText, setMarkdownText] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  const responseText = outputFormat === "json" ? jsonText : markdownText
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setSelectedFile(file)
+    // A new document invalidates any previously extracted results.
     setDocumentType("")
-    setResponseText("")
+    setJsonText("")
+    setMarkdownText("")
     if (file) setFilePath(file.name)
   }
 
   const handleUpload = async () => {
     if (!selectedFile) return
+    // Only touch the result for the format being extracted; the other
+    // format's cached result stays intact.
+    const setResult = outputFormat === "json" ? setJsonText : setMarkdownText
     setIsLoading(true)
-    setDocumentType("")
-    setResponseText("")
+    if (outputFormat === "json") setDocumentType("")
+    setResult("")
 
     try {
       const form = new FormData()
@@ -50,13 +60,13 @@ function FileUploaderTS() {
 
       if (outputFormat === "json") {
         setDocumentType(data.document_type)
-        setResponseText(JSON.stringify(data.data, null, 2))
+        setJsonText(JSON.stringify(data.data, null, 2))
       } else {
-        setResponseText(data.text)
+        setMarkdownText(data.text)
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      setResponseText(`Error uploading file: ${message}`)
+      setResult(`Error uploading file: ${message}`)
     }
 
     setIsLoading(false)
@@ -73,11 +83,7 @@ function FileUploaderTS() {
           </span>
           <Tabs
             value={outputFormat}
-            onValueChange={(v) => {
-              setOutputFormat(v as OutputFormat)
-              setDocumentType("")
-              setResponseText("")
-            }}
+            onValueChange={(v) => setOutputFormat(v as OutputFormat)}
           >
             <TabsList>
               <TabsTrigger value="json">JSON</TabsTrigger>
