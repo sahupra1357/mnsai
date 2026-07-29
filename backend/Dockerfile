@@ -20,12 +20,18 @@ ENV UV_COMPILE_BYTECODE=1
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
 ENV UV_LINK_MODE=copy
 
-# Install system dependencies including poppler-utils
-RUN apt-get update && apt-get install -y \
+# Install bounded local document tooling. LibreOffice is used headlessly to
+# produce stable DOCX/PPTX page previews; macros are never executed.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    fonts-dejavu-core \
+    libreoffice-core \
+    libreoffice-impress \
+    libreoffice-writer \
     poppler-utils \
     tesseract-ocr \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers

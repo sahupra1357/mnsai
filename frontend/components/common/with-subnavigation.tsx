@@ -46,8 +46,8 @@ const NAV_ITEMS: Array<NavItem> = [
       },
       {
         label: "Data Extraction",
-        subLabel: "An exclusive list for contract work",
-        href: "/extractor",
+        subLabel: "Review OCR results with confidence and parser provenance",
+        href: "/document-extractions",
       },
       {
         label: "Course Search",
@@ -68,6 +68,11 @@ const NAV_ITEMS: Array<NavItem> = [
         label: "Blog",
         subLabel: "Insights, tutorials, and updates",
         href: "/resources/blog",
+      },
+      {
+        label: "Legacy GPT Extractor",
+        subLabel: "Original GPT-based extraction demo",
+        href: "/extractor",
       },
       {
         label: "Profile v1 (1st draft)",

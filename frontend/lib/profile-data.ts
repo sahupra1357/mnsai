@@ -305,7 +305,7 @@ export const projects: Project[] = [
     description:
       "Turn messy PDFs, invoices, receipts, and scanned forms into clean structured data — instantly and at scale.",
     chips: ["FastAPI", "OpenAI"],
-    href: "/extractor",
+    href: "/document-extractions",
     ctaLabel: "Open demo",
   },
   {

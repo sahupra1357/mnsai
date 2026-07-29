@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import EmailStr
+from sqlalchemy import JSON, Column, LargeBinary
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -210,3 +211,47 @@ class ProfileImageMeta(SQLModel):
     has_image: bool
     content_type: str | None = None
     updated_at: datetime | None = None
+
+
+class DocumentExtractionRecord(SQLModel, table=True):
+    """Durable owner-scoped visual-document extraction and immutable source."""
+
+    __tablename__ = "document_extraction"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    source_name: str = Field(max_length=255)
+    source_sha256: str = Field(max_length=64, index=True)
+    extraction_fingerprint: str | None = Field(
+        default=None, max_length=64, index=True
+    )
+    media_type: str = Field(max_length=150)
+    source_bytes: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    normalized_result: dict = Field(sa_column=Column(JSON, nullable=False))
+    revision: int = Field(default=0, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class DocumentPreviewArtifactRecord(SQLModel, table=True):
+    """Content-addressed page preview derived from an immutable source."""
+
+    __tablename__ = "document_preview_artifact"
+
+    cache_key: str = Field(primary_key=True, max_length=64)
+    document_id: uuid.UUID = Field(
+        foreign_key="document_extraction.id",
+        nullable=False,
+        index=True,
+        ondelete="CASCADE",
+    )
+    page_number: int = Field(nullable=False)
+    media_type: str = Field(max_length=100)
+    width: int
+    height: int
+    source_sha256: str = Field(max_length=64)
+    content_sha256: str = Field(max_length=64)
+    content: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)

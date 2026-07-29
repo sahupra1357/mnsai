@@ -20,7 +20,7 @@ const solutions = [
     icon: FileText,
     title: "Data Extraction",
     description: "Extract structured data from PDFs, invoices, and scanned documents using AI.",
-    href: "/extractor",
+    href: "/document-extractions",
     color: "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
   },
   {

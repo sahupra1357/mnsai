@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
 
@@ -12,7 +12,7 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
 
   const headers: Record<string, string> = {}
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`
   }
 
   const contentType = request.headers.get("content-type")
@@ -34,29 +34,51 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
     body,
   })
 
-  const resBody = await backendRes.arrayBuffer()
   const resHeaders = new Headers()
-  const resContentType = backendRes.headers.get("content-type")
-  if (resContentType) resHeaders.set("content-type", resContentType)
+  for (const header of [
+    "content-type",
+    "content-disposition",
+    "cache-control",
+    "etag",
+    "x-content-type-options",
+  ]) {
+    const value = backendRes.headers.get(header)
+    if (value) resHeaders.set(header, value)
+  }
 
-  return new NextResponse(resBody, {
+  return new NextResponse(backendRes.body, {
     status: backendRes.status,
     headers: resHeaders,
   })
 }
 
-export async function GET(request: NextRequest, { params }: { params: Params }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
   return proxy(request, await params)
 }
-export async function POST(request: NextRequest, { params }: { params: Params }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
   return proxy(request, await params)
 }
-export async function PUT(request: NextRequest, { params }: { params: Params }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
   return proxy(request, await params)
 }
-export async function DELETE(request: NextRequest, { params }: { params: Params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
   return proxy(request, await params)
 }
-export async function PATCH(request: NextRequest, { params }: { params: Params }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
   return proxy(request, await params)
 }

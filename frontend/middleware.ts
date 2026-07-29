@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
 const PROTECTED_PATHS = [
   "/dashboard",
@@ -6,10 +6,16 @@ const PROTECTED_PATHS = [
   "/admin",
   "/settings",
   "/extractor",
+  "/document-extractions",
   "/solutions",
 ]
 
-const PUBLIC_AUTH_PATHS = ["/login", "/signup", "/recover-password", "/reset-password"]
+const PUBLIC_AUTH_PATHS = [
+  "/login",
+  "/signup",
+  "/recover-password",
+  "/reset-password",
+]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
