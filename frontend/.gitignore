@@ -28,7 +28,3 @@ openapi.json
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-# Unused / redundant profile components (flagged, kept per request — not deleted)
-components/profile/chat-prefill-link.tsx
-components/profile/featured-panel.tsx
-components/profile/placeholder-card.tsx
