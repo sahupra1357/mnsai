@@ -127,9 +127,7 @@ def mistral_ocr_executor(page: PageInput) -> AdapterResult:
         is_image = True
     document = {
         "type": "image_url" if is_image else "document_url",
-        "image_url" if is_image else "document_url": _data_url(
-            media_type, content
-        ),
+        "image_url" if is_image else "document_url": _data_url(media_type, content),
     }
     payload: dict[str, Any] = {
         "model": model,
@@ -234,18 +232,12 @@ def _page_png(page: PageInput) -> bytes:
             source_name=f"source-page-{page.page_number}",
             config=PreviewConfig(
                 dpi=int(os.getenv("DOCUMENT_EXTRACTOR_PREVIEW_DPI", "144")),
-                office_binary=os.getenv(
-                    "DOCUMENT_EXTRACTOR_OFFICE_BINARY", "soffice"
-                ),
+                office_binary=os.getenv("DOCUMENT_EXTRACTOR_OFFICE_BINARY", "soffice"),
                 office_timeout_seconds=float(
-                    os.getenv(
-                        "DOCUMENT_EXTRACTOR_OFFICE_TIMEOUT_SECONDS", "90"
-                    )
+                    os.getenv("DOCUMENT_EXTRACTOR_OFFICE_TIMEOUT_SECONDS", "90")
                 ),
                 max_output_pixels=int(
-                    os.getenv(
-                        "DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS", "40000000"
-                    )
+                    os.getenv("DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS", "40000000")
                 ),
             ),
         )

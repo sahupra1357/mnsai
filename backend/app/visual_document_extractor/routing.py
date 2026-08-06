@@ -93,9 +93,7 @@ class ExtractionRouter:
         used_technologies: set[str] = set()
         if primary is not None:
             if page.operator_parser:
-                routing_reasons.append(
-                    f"operator_override={page.operator_parser}"
-                )
+                routing_reasons.append(f"operator_override={page.operator_parser}")
             routing_reasons.append(f"primary={primary.name}")
             used_technologies.add(primary.technology)
             retries_remaining = self.policy.transient_retries_per_adapter
@@ -123,9 +121,7 @@ class ExtractionRouter:
             if alternate_budget == 0:
                 break
             if alternate.technology in used_technologies:
-                routing_reasons.append(
-                    f"skipped_same_technology={alternate.name}"
-                )
+                routing_reasons.append(f"skipped_same_technology={alternate.name}")
                 continue
             used_technologies.add(alternate.technology)
             retries_remaining = self.policy.transient_retries_per_adapter
@@ -157,16 +153,12 @@ class ExtractionRouter:
             used_technologies.add(vision.technology)
             vision_page = page.model_copy(
                 update={
-                    "fallback_context": self._fallback_context(
-                        candidates, assessments
-                    )
+                    "fallback_context": self._fallback_context(candidates, assessments)
                 }
             )
             result, assessment = self._run(vision, vision_page)
             if vision.name == "openai-vision-terra":
-                assessment = self._terra_candidate_check(
-                    result, candidates, assessment
-                )
+                assessment = self._terra_candidate_check(result, candidates, assessment)
                 result = result.model_copy(
                     update={
                         "attempt": result.attempt.model_copy(

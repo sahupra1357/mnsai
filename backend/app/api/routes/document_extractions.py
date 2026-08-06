@@ -2,12 +2,22 @@ import json
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 
 from app.api.deps import CurrentUser
 from app.core.config import settings
 from app.visual_document_extractor.export import document_content
 from app.visual_document_extractor.intake import IntakeValidationError
+from app.visual_document_extractor.modal_execution import ModalDispatcher
 from app.visual_document_extractor.models import (
     CapabilityResponse,
     DocumentResult,
@@ -20,6 +30,12 @@ from app.visual_document_extractor.preview import (
     PreviewError,
     PreviewErrorCode,
     render_preview,
+)
+from app.visual_document_extractor.remote_jobs import (
+    ModalExtractionCoordinator,
+    RemoteJobError,
+    RemoteJobRepository,
+    RemoteResultCallback,
 )
 from app.visual_document_extractor.service import (
     DocumentExtractionService,
@@ -46,6 +62,31 @@ def get_service() -> DocumentExtractionService:
     return extraction_service
 
 
+def get_modal_coordinator() -> ModalExtractionCoordinator | None:
+    service = get_service()
+    if (
+        not isinstance(service.store, SqlDocumentStore)
+        or not settings.DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL
+        or not settings.DOCUMENT_EXTRACTOR_MODAL_KEY
+        or not settings.DOCUMENT_EXTRACTOR_MODAL_SECRET
+        or not settings.DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL
+    ):
+        return None
+    return ModalExtractionCoordinator(
+        service,
+        RemoteJobRepository(service.store.engine),
+        ModalDispatcher(
+            endpoint_url=settings.DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL,
+            endpoint_key=settings.DOCUMENT_EXTRACTOR_MODAL_KEY,
+            endpoint_secret=settings.DOCUMENT_EXTRACTOR_MODAL_SECRET,
+            timeout_seconds=(
+                settings.DOCUMENT_EXTRACTOR_MODAL_DISPATCH_TIMEOUT_SECONDS
+            ),
+        ),
+        public_base_url=settings.DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL,
+    )
+
+
 @router.get("/capabilities", response_model=CapabilityResponse)
 def get_capabilities(current_user: CurrentUser) -> CapabilityResponse:
     del current_user
@@ -69,6 +110,14 @@ async def create_document_extraction(
             ),
         )
     try:
+        coordinator = get_modal_coordinator()
+        if settings.DOCUMENT_EXTRACTOR_MODAL_ENABLED and coordinator is not None:
+            return coordinator.submit(
+                owner_id=current_user.id,
+                source_name=file.filename or "upload",
+                content=content,
+                operator_parser=parser,
+            )
         return service.ingest(
             owner_id=current_user.id,
             source_name=file.filename or "upload",
@@ -84,6 +133,85 @@ async def create_document_extraction(
         raise HTTPException(status_code=status_code, detail=exc.safe_message)
     except InvalidParserOverrideError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _bearer_token(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Remote job authorization failed")
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Remote job authorization failed")
+    return token
+
+
+@router.get(
+    "/internal/modal/jobs/{job_id}/source",
+    response_class=Response,
+    include_in_schema=False,
+)
+def get_modal_job_source(
+    job_id: uuid.UUID,
+    authorization: str | None = Header(default=None),
+) -> Response:
+    service = get_service()
+    if not isinstance(service.store, SqlDocumentStore):
+        raise HTTPException(status_code=404, detail="Remote extraction job not found")
+    repository = RemoteJobRepository(service.store.engine)
+    try:
+        job = repository.authorize(
+            job_id=job_id,
+            candidate=_bearer_token(authorization),
+            purpose="source_download",
+        )
+        content, media_type, _ = service.get_source(job.document_id, job.owner_id)
+    except (RemoteJobError, DocumentNotFoundError, SourceNotFoundError):
+        raise HTTPException(status_code=401, detail="Remote job authorization failed")
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.post(
+    "/internal/modal/jobs/{job_id}/result",
+    response_model=DocumentResult,
+    include_in_schema=False,
+)
+def save_modal_job_result(
+    job_id: uuid.UUID,
+    callback: RemoteResultCallback,
+    authorization: str | None = Header(default=None),
+) -> DocumentResult:
+    coordinator = get_modal_coordinator()
+    if coordinator is None:
+        raise HTTPException(status_code=404, detail="Remote extraction job not found")
+    job = None
+    try:
+        job = coordinator.repository.authorize(
+            job_id=job_id,
+            candidate=_bearer_token(authorization),
+            purpose="result_callback",
+        )
+        for conflict_attempt in range(3):
+            try:
+                return coordinator.accept_result(job, callback)
+            except ConcurrentDocumentUpdateError:
+                job = coordinator.repository.get_job(job_id)
+                if job.status == "completed":
+                    return get_service().get(job.document_id, job.owner_id)
+                if conflict_attempt == 2:
+                    raise HTTPException(
+                        status_code=409, detail="Remote callback conflict; retry callback"
+                    )
+        raise HTTPException(status_code=409, detail="Remote callback conflict")
+    except ConcurrentDocumentUpdateError:
+        raise HTTPException(status_code=409, detail="Remote callback conflict")
+    except RemoteJobError:
+        raise HTTPException(status_code=401, detail="Remote job authorization failed")
 
 
 @router.get("/{document_id}", response_model=DocumentResult)
@@ -116,9 +244,7 @@ def export_document_extraction(
         content=json.dumps(document_content(document), indent=2),
         media_type="application/json",
         headers={
-            "Content-Disposition": (
-                f"attachment; filename*=UTF-8''{safe_filename}"
-            ),
+            "Content-Disposition": (f"attachment; filename*=UTF-8''{safe_filename}"),
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
         },
@@ -177,11 +303,15 @@ def get_document_page_preview(
         document = service.get(document_id, current_user.id)
         if not any(page.page_number == page_number for page in document.pages):
             raise InvalidPageError("Page not found")
-        content, media_type, filename = service.get_source(
-            document_id, current_user.id
-        )
+        content, media_type, filename = service.get_source(document_id, current_user.id)
         cache = (
-            SqlPreviewArtifactCache(service.store.engine, document_id)
+            SqlPreviewArtifactCache(
+                service.store.engine,
+                document_id,
+                object_storage=service.store.object_storage,
+                object_prefix=service.store.object_prefix,
+                fallback_to_postgres=service.store.fallback_to_postgres,
+            )
             if isinstance(service.store, SqlDocumentStore)
             else None
         )
@@ -197,18 +327,14 @@ def get_document_page_preview(
                 office_timeout_seconds=(
                     settings.DOCUMENT_EXTRACTOR_OFFICE_TIMEOUT_SECONDS
                 ),
-                max_output_pixels=(
-                    settings.DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS
-                ),
+                max_output_pixels=(settings.DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS),
                 max_concurrent_office=(
                     settings.DOCUMENT_EXTRACTOR_MAX_PARSER_PROCESSES
                 ),
                 office_memory_bytes=(
                     settings.DOCUMENT_EXTRACTOR_PARSER_MEMORY_MB * 1024 * 1024
                 ),
-                office_cpu_seconds=(
-                    settings.DOCUMENT_EXTRACTOR_PARSER_CPU_SECONDS
-                ),
+                office_cpu_seconds=(settings.DOCUMENT_EXTRACTOR_PARSER_CPU_SECONDS),
             ),
             cache=cache,
         )
@@ -268,6 +394,18 @@ def reprocess_document_page(
     current_user: CurrentUser,
 ) -> PageResult:
     try:
+        coordinator = get_modal_coordinator()
+        if settings.DOCUMENT_EXTRACTOR_MODAL_ENABLED and coordinator is not None:
+            try:
+                return coordinator.reprocess_page(
+                    document_id,
+                    page_number,
+                    current_user.id,
+                    request.parser,
+                )
+            except (RemoteJobError, ValueError):
+                # A dispatch/configuration failure uses the existing bounded local path.
+                pass
         return get_service().reprocess_page(
             document_id, page_number, current_user.id, request
         )

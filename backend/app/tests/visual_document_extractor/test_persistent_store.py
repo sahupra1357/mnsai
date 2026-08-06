@@ -9,6 +9,11 @@ import pytest
 from sqlmodel import SQLModel, create_engine
 
 from app.visual_document_extractor.models import DocumentResult, SourceMetadata
+from app.visual_document_extractor.object_storage import (
+    InMemoryObjectStorage,
+    ObjectNotFoundError,
+    ObjectStorageError,
+)
 from app.visual_document_extractor.preview import PreviewArtifact
 from app.visual_document_extractor.store import (
     ConcurrentDocumentUpdateError,
@@ -175,3 +180,46 @@ def test_identical_sources_have_tenant_scoped_preview_cache_keys(
 
     assert first_cache.get("b" * 64) == artifact
     assert second_cache.get("b" * 64) == artifact
+
+
+def test_r2_style_object_storage_keeps_binaries_out_of_sql_and_deletes_them(
+    tmp_path: Path,
+) -> None:
+    engine = create_engine(f"sqlite:///{tmp_path / 'objects.db'}")
+    SQLModel.metadata.create_all(engine)
+    objects = InMemoryObjectStorage()
+    store = SqlDocumentStore(engine, object_storage=objects)
+    content = b"object-backed-source"
+    document = _document(content)
+
+    store.create(document, content)
+    source_key = store._source_key(document)
+
+    assert (
+        objects.get(source_key, expected_sha256=document.source.source_sha256)
+        == content
+    )
+    assert store.get_source(document.document_id, OWNER)[0] == content
+    assert store.delete(document.document_id, OWNER) is True
+    with pytest.raises(ObjectNotFoundError):
+        objects.get(source_key)
+
+
+def test_object_write_failure_can_fall_back_to_postgres(tmp_path: Path) -> None:
+    class BrokenStorage(InMemoryObjectStorage):
+        def put(self, *args, **kwargs):
+            raise ObjectStorageError("provider_write_failed", "Object write failed")
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'fallback.db'}")
+    SQLModel.metadata.create_all(engine)
+    store = SqlDocumentStore(
+        engine,
+        object_storage=BrokenStorage(),
+        fallback_to_postgres=True,
+    )
+    content = b"postgres-fallback"
+    document = _document(content)
+
+    store.create(document, content)
+
+    assert store.get_source(document.document_id, OWNER)[0] == content

@@ -148,7 +148,9 @@ def verify_candidate(
         candidate_id=candidate.candidate_id,
         status=status,
         grounding_score=score,
-        detail=None if status is GroundingStatus.GROUNDED_WITH_NORMALIZATION else "text is not fully supported by cited source",
+        detail=None
+        if status is GroundingStatus.GROUNDED_WITH_NORMALIZATION
+        else "text is not fully supported by cited source",
     )
 
 

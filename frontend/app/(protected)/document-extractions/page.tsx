@@ -1,9 +1,12 @@
 "use client"
 
-import { AlertCircle } from "lucide-react"
-import { useState } from "react"
+import { AlertCircle, LoaderCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 
-import { uploadDocument } from "@/components/document-extractions/api"
+import {
+  loadDocument,
+  uploadDocument,
+} from "@/components/document-extractions/api"
 import { DocumentUpload } from "@/components/document-extractions/document-upload"
 import { ReviewWorkspace } from "@/components/document-extractions/review-workspace"
 import type { DocumentResult } from "@/components/document-extractions/types"
@@ -13,6 +16,29 @@ export default function DocumentExtractionsPage() {
   const [document, setDocument] = useState<DocumentResult | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const processing =
+    document?.status === "queued" ||
+    document?.status === "classifying" ||
+    document?.status === "extracting" ||
+    document?.status === "fallback"
+
+  useEffect(() => {
+    if (!document || !processing) return
+    const timer = window.setTimeout(() => {
+      void loadDocument(document.document_id)
+        .then(setDocument)
+        .catch((caught: unknown) => {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Extraction status could not be refreshed.",
+          )
+          setDocument((current) => (current ? { ...current } : current))
+        })
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [document, processing])
 
   async function upload(file: File) {
     setUploading(true)
@@ -28,6 +54,29 @@ export default function DocumentExtractionsPage() {
     } finally {
       setUploading(false)
     }
+  }
+
+  if (document && processing) {
+    return (
+      <main className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-4 py-10">
+        <div
+          className="w-full rounded-xl border bg-card p-8 text-center shadow-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <LoaderCircle className="mx-auto mb-4 size-9 animate-spin text-primary" aria-hidden />
+          <h1 className="text-xl font-semibold">Extraction is running on Modal</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The source is safely stored and each page is being processed. This page
+            will open the review workspace automatically when the result is ready.
+          </p>
+          {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+          <Button className="mt-5" variant="outline" onClick={() => setDocument(null)}>
+            Start another upload
+          </Button>
+        </div>
+      </main>
+    )
   }
 
   if (document) {

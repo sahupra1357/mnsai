@@ -46,9 +46,7 @@ class QualityAssessment:
 
     @property
     def failed_checks(self) -> set[str]:
-        return {
-            signal.name for signal in self.signals if signal.passed is False
-        }
+        return {signal.name for signal in self.signals if signal.passed is False}
 
 
 def _signal(
@@ -111,8 +109,7 @@ def validate_result(
     control_count = sum(
         1
         for character in joined_text
-        if category(character).startswith("C")
-        and character not in {"\n", "\r", "\t"}
+        if category(character).startswith("C") and character not in {"\n", "\r", "\t"}
     )
     control_ratio = control_count / denominator
     signals.append(
@@ -125,10 +122,9 @@ def validate_result(
     )
 
     reading_orders = [element.reading_order for element in result.elements]
-    reading_order_valid = (
-        len(reading_orders) == len(set(reading_orders))
-        and reading_orders == sorted(reading_orders)
-    )
+    reading_order_valid = len(reading_orders) == len(
+        set(reading_orders)
+    ) and reading_orders == sorted(reading_orders)
     signals.append(
         _signal(
             "reading_order",
@@ -176,9 +172,7 @@ def validate_result(
         )
     )
 
-    table_elements = [
-        element for element in result.elements if element.type == "table"
-    ]
+    table_elements = [element for element in result.elements if element.type == "table"]
     if table_elements:
         usable_table = all(element.text.strip() for element in table_elements)
         signals.append(
@@ -229,13 +223,9 @@ def validate_result(
     definitive = [signal for signal in signals if signal.passed is not None]
     passed_count = sum(signal.passed is True for signal in definitive)
     score = passed_count / len(definitive) if definitive else 0.0
-    passed = bool(definitive) and all(
-        signal.passed is not False for signal in signals
-    )
+    passed = bool(definitive) and all(signal.passed is not False for signal in signals)
     warnings = tuple(
-        signal.detail
-        for signal in signals
-        if signal.passed is False and signal.detail
+        signal.detail for signal in signals if signal.passed is False and signal.detail
     )
     return QualityAssessment(
         passed=passed,
@@ -257,9 +247,7 @@ def choose_best_candidate(
     def rank(result: AdapterResult) -> tuple[int, float, float, int]:
         assessment = validate_result(page, result, policy)
         confidence = (
-            result.attempt.confidence
-            if result.attempt.confidence is not None
-            else -1.0
+            result.attempt.confidence if result.attempt.confidence is not None else -1.0
         )
         text_length = sum(len(element.text.strip()) for element in result.elements)
         return (

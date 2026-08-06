@@ -58,9 +58,7 @@ def _same_visual_line(left: ExtractedElement, right: ExtractedElement) -> bool:
     if left.bounding_box is None or right.bounding_box is None:
         return False
     left_box, right_box = left.bounding_box, right.bounding_box
-    overlap = min(left_box.bottom, right_box.bottom) - max(
-        left_box.top, right_box.top
-    )
+    overlap = min(left_box.bottom, right_box.bottom) - max(left_box.top, right_box.top)
     smaller_height = min(
         left_box.bottom - left_box.top, right_box.bottom - right_box.top
     )
@@ -104,7 +102,15 @@ def _tesseract_lines(elements: list[ExtractedElement]) -> list[str]:
         else:
             lines[-1].append(element)
     return [
-        " ".join(_text(word) for word in sorted(line, key=lambda item: item.bounding_box.left if item.bounding_box else item.reading_order))
+        " ".join(
+            _text(word)
+            for word in sorted(
+                line,
+                key=lambda item: item.bounding_box.left
+                if item.bounding_box
+                else item.reading_order,
+            )
+        )
         for line in lines
         if any(_text(word) for word in line)
     ]
@@ -206,8 +212,7 @@ def page_content(page: PageResult) -> dict[str, Any]:
     sections: list[dict[str, Any]] = []
     tesseract_words: list[ExtractedElement] = []
     is_tesseract = (
-        page.selected_parser is not None
-        and page.selected_parser.name == "tesseract"
+        page.selected_parser is not None and page.selected_parser.name == "tesseract"
     )
     for element in ordered:
         text = _text(element)

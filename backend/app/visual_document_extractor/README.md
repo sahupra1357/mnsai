@@ -27,6 +27,11 @@ This package is independent of the legacy `app.gptocr` implementation.
 - Stable per-page PNG previews for PDF/images and headless LibreOffice conversion for
   DOCX/PPTX
 - Capability reporting when optional parser engines are unavailable
+- Configurable binary storage with Cloudflare R2 as the production default and
+  PostgreSQL binary storage as the fallback
+- Optional asynchronous Modal dispatch with per-page parser functions, hashed opaque
+  source/callback tokens, idempotent result callbacks, and automatic local dispatch
+  fallback when Modal cannot accept a job
 
 ## Optional parser capabilities
 
@@ -87,6 +92,150 @@ See `.env.example` for:
 - `VISUAL_EXTRACTOR_MINERU_WORKER`
 - `VISUAL_EXTRACTOR_MARKER_WORKER`
 
+## Storage architecture
+
+PostgreSQL always stores ownership, source checksum and metadata, extraction
+fingerprint, normalized results, review corrections, job state, and audit history.
+With `DOCUMENT_EXTRACTOR_STORAGE_PROVIDER=r2`, original files and preview PNGs are
+stored in R2 and SQL stores only their provider/object references. R2 downloads are
+verified against the immutable SHA-256. If R2 configuration is incomplete and
+`DOCUMENT_EXTRACTOR_STORAGE_FALLBACK_TO_POSTGRES=True`, binary content is stored in
+PostgreSQL instead.
+
+Changing providers does not change the cache key: completed results are still reused
+by owner, source SHA-256, and extraction-configuration fingerprint.
+
+## Modal execution architecture
+
+When `DOCUMENT_EXTRACTOR_MODAL_ENABLED=True` and all Modal endpoint settings are
+present, uploads are validated and persisted as `queued`, then each classified page is
+submitted to the appropriate Modal function. The review frontend polls the existing
+document endpoint until all callbacks complete. If dispatch cannot be established, the
+queued record is removed and the existing local Render pipeline runs instead.
+
+Low-quality or failed pages use bounded classification-specific Modal chains:
+Docling→PaddleOCR for digital/unknown pages, PaddleOCR→PaddleOCR-VL for scans,
+MinerU→Marker for formula-heavy pages, and PaddleOCR-VL→MinerU→Marker for complex
+layouts. After the Modal chain is exhausted, configured Mistral OCR, OpenAI Terra, and
+OpenAI Sol adapters form the remote-provider escalation sequence. An unresolved page is
+marked for manual review.
+
+For PostgreSQL binary storage, Modal downloads through a job-bound Render endpoint. For
+R2, Modal receives a short-lived R2 presigned URL and bypasses Render for the binary
+transfer. Result callbacks always use a separate opaque credential. Only SHA-256 token
+digests and non-secret lifecycle metadata are stored; plaintext tokens are sent once in
+the protected dispatch request and are never logged.
+
+The Modal submission endpoint is protected with Modal Proxy Auth. A completed result
+callback is idempotent by job and attempt ID. Source credentials are revoked at terminal
+state; callback credentials remain narrowly usable for bounded duplicate delivery until
+expiry.
+
+## Deploy Cloudflare R2
+
+1. In Cloudflare, open **Storage & databases → R2** and activate R2.
+2. Create a private bucket, for example `mnsai-documents`. Do not enable public `r2.dev`
+   access.
+3. Create an R2 API token restricted to that bucket with object read/write permission.
+4. Copy the S3 endpoint shown by Cloudflare. It has the form
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+5. Set these Render variables:
+
+   ```text
+   DOCUMENT_EXTRACTOR_STORAGE_PROVIDER=r2
+   DOCUMENT_EXTRACTOR_STORAGE_FALLBACK_TO_POSTGRES=True
+   DOCUMENT_EXTRACTOR_R2_ENDPOINT_URL=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+   DOCUMENT_EXTRACTOR_R2_BUCKET=mnsai-documents
+   DOCUMENT_EXTRACTOR_R2_ACCESS_KEY_ID=<R2 access key>
+   DOCUMENT_EXTRACTOR_R2_SECRET_ACCESS_KEY=<R2 secret key>
+   DOCUMENT_EXTRACTOR_R2_PREFIX=visual-document-extractor
+   DOCUMENT_EXTRACTOR_R2_PRESIGN_SECONDS=900
+   ```
+
+6. Deploy Render, run the Alembic migration, upload a small fixture, and confirm the
+   source object exists under the configured prefix while `source_bytes` is null.
+7. Set `DOCUMENT_EXTRACTOR_STORAGE_PROVIDER=postgres` to deliberately use PostgreSQL.
+   To require R2 rather than fall back, set
+   `DOCUMENT_EXTRACTOR_STORAGE_FALLBACK_TO_POSTGRES=False`.
+
+## Deploy Modal
+
+1. Install and authenticate the Modal CLI in a deployment workstation or CI environment:
+
+   ```bash
+   python -m pip install modal
+   modal setup
+   ```
+
+2. Create a Modal Proxy Token for the submission web function:
+
+   ```bash
+   modal workspace proxy-tokens create
+   ```
+
+   Save the printed token ID and secret immediately; Modal does not show the secret
+   again.
+
+3. Review `modal_app.py` and `modal_parser_worker.py`. The repository pins Docling,
+   PaddleOCR/PaddleOCR-VL, MinerU, and Marker in separate images and bakes the normalized
+   JSON worker into each image. Docling is CPU by default; PaddleOCR uses T4, and
+   PaddleOCR-VL/MinerU/Marker use L4 defaults. Confirm Marker model-weight licensing is
+   appropriate for your organization before deployment.
+4. Adjust a GPU or parser pin only after fixture-based memory, accuracy, and latency
+   measurements. Treat model downloads as untrusted deployment inputs and record their
+   revisions.
+5. Deploy from the `backend/` directory:
+
+   ```bash
+   modal deploy modal_app.py
+   ```
+
+6. Copy the protected `submit` URL printed by Modal. In Render set:
+
+   ```text
+   DOCUMENT_EXTRACTOR_MODAL_ENABLED=True
+   DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL=<Modal submit URL>
+   DOCUMENT_EXTRACTOR_MODAL_KEY=<Proxy Token ID>
+   DOCUMENT_EXTRACTOR_MODAL_SECRET=<Proxy Token secret>
+   DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL=https://<service>.onrender.com
+   DOCUMENT_EXTRACTOR_MODAL_DISPATCH_TIMEOUT_SECONDS=15
+   DOCUMENT_EXTRACTOR_MODAL_PARSER_TIMEOUT_SECONDS=900
+   DOCUMENT_EXTRACTOR_MODAL_SOURCE_TOKEN_MINUTES=60
+   DOCUMENT_EXTRACTOR_MODAL_RESULT_TOKEN_MINUTES=180
+   DOCUMENT_EXTRACTOR_MODAL_SOURCE_MAX_USES=3
+   ```
+
+7. Redeploy Render and verify `/api/v1/document-extractions/capabilities` reports
+   `execution_backend=modal`. Upload one fixture for every route and confirm the Modal
+   call ID, parser attempt/version, callback, and final page state.
+8. To disable Modal safely, set `DOCUMENT_EXTRACTOR_MODAL_ENABLED=False` and redeploy.
+   Uploads then use only adapters available in the Render container.
+
+## Deploy the Render backend
+
+1. Provision durable PostgreSQL. Render Free PostgreSQL expires and is not appropriate
+   for retained production documents or audit history.
+2. Configure the existing application variables plus the storage variables above.
+3. Ensure the build installs the locked backend dependencies (`uv sync --frozen`).
+4. Run migrations before starting the API:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+5. Deploy the FastAPI service and set its health check as already used by the repository.
+6. Configure Modal only after the Render public URL is stable, because Modal callbacks
+   use `DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL`.
+7. Smoke-test upload, queued polling, source/preview access, review save/approve,
+   duplicate upload reuse, reprocessing, and deletion.
+
+R2 and PostgreSQL cannot participate in one atomic transaction. Deletion therefore
+fails closed: SQL metadata is retained if an R2 deletion fails so the operation can be
+retried. If several objects belong to a document, an interruption after an earlier
+object was deleted can temporarily leave a retained record with a missing derived
+object. Production operations should retry deletion and alert on object-store failures;
+a durable deletion outbox is the recommended next hardening step for strict guarantees.
+
 ## Verification
 
 From `backend/`:
@@ -127,9 +276,8 @@ stores the newly selected page result in the existing document record.
   current macOS host. Office preview behavior is contract-tested locally; a container
   smoke test still requires a running Docker daemon.
 - DOCX page count remains provisional until its first stable PDF conversion.
-- Extraction currently runs synchronously within the request while each parser itself is
-  isolated in a killable child process. Durable background queuing and active-job
-  cancellation remain pending.
+- Local extraction runs synchronously. Modal extraction has a durable per-page job and
+  callback boundary, but active remote-job cancellation remains pending.
 - Simultaneous first uploads of identical bytes can both begin extraction. Subsequent
   uploads reuse the newest completed matching result.
 - Malware scanning requires a separately configured scanner/isolation service.
@@ -137,3 +285,7 @@ stores the newly selected page result in the existing document record.
   UI E2E visual, and accessibility verification require their deployment dependencies.
 - Mistral and OpenAI contracts are covered with mocked provider responses. Live remote
   smoke tests require user-supplied API keys and may incur provider charges.
+- The Modal images include pinned parser packages and a normalized worker executable,
+  but their large model downloads, CUDA compatibility, coordinates, and extraction
+  accuracy must be verified against real fixtures in the target Modal account before
+  Docling/PaddleOCR/PaddleOCR-VL/MinerU/Marker acceptance criteria can be claimed.

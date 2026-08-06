@@ -47,8 +47,9 @@ class User(UserBase, table=True):
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
     extrs: list["Extr"] = Relationship(back_populates="owner", cascade_delete=True)
-    blog_posts: list["BlogPost"] = Relationship(back_populates="author", cascade_delete=True)
-
+    blog_posts: list["BlogPost"] = Relationship(
+        back_populates="author", cascade_delete=True
+    )
 
 
 # Properties to return via API, id is always required
@@ -128,10 +129,12 @@ class NewPassword(SQLModel):
 #     )
 #     owner: User | None = Relationship(back_populates="extractions")
 
+
 # ExtractionList
 class ExtrBase(SQLModel):
     filename: str = Field(min_length=1, max_length=255)
     pagecount: int | None = Field(default=0)
+
 
 class Extr(ExtrBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -224,11 +227,15 @@ class DocumentExtractionRecord(SQLModel, table=True):
     )
     source_name: str = Field(max_length=255)
     source_sha256: str = Field(max_length=64, index=True)
-    extraction_fingerprint: str | None = Field(
-        default=None, max_length=64, index=True
-    )
+    extraction_fingerprint: str | None = Field(default=None, max_length=64, index=True)
     media_type: str = Field(max_length=150)
-    source_bytes: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    source_bytes: bytes | None = Field(
+        default=None, sa_column=Column(LargeBinary, nullable=True)
+    )
+    source_storage_provider: str = Field(
+        default="postgres", max_length=20, nullable=False
+    )
+    source_object_key: str | None = Field(default=None, max_length=1024)
     normalized_result: dict = Field(sa_column=Column(JSON, nullable=False))
     revision: int = Field(default=0, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
@@ -253,5 +260,65 @@ class DocumentPreviewArtifactRecord(SQLModel, table=True):
     height: int
     source_sha256: str = Field(max_length=64)
     content_sha256: str = Field(max_length=64)
-    content: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    content: bytes | None = Field(
+        default=None, sa_column=Column(LargeBinary, nullable=True)
+    )
+    storage_provider: str = Field(default="postgres", max_length=20, nullable=False)
+    object_key: str | None = Field(default=None, max_length=1024)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class DocumentExtractionJobRecord(SQLModel, table=True):
+    """Durable state for one asynchronous remote extraction attempt."""
+
+    __tablename__ = "document_extraction_job"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    document_id: uuid.UUID = Field(
+        foreign_key="document_extraction.id",
+        nullable=False,
+        index=True,
+        ondelete="CASCADE",
+    )
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    attempt_id: uuid.UUID = Field(
+        default_factory=uuid.uuid4, nullable=False, unique=True
+    )
+    page_number: int = Field(nullable=False)
+    status: str = Field(default="queued", max_length=30, nullable=False, index=True)
+    operator_parser: str | None = Field(default=None, max_length=100)
+    remote_call_id: str | None = Field(default=None, max_length=255)
+    error_code: str | None = Field(default=None, max_length=100)
+    error_message: str | None = Field(default=None, max_length=500)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    completed_at: datetime | None = Field(default=None)
+
+
+class DocumentJobTokenRecord(SQLModel, table=True):
+    """Hashed, purpose-bound capability token for a remote job."""
+
+    __tablename__ = "document_job_token"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    token_id: str = Field(max_length=40, nullable=False, unique=True, index=True)
+    token_hash: str = Field(max_length=64, nullable=False, unique=True, index=True)
+    job_id: uuid.UUID = Field(
+        foreign_key="document_extraction_job.id",
+        nullable=False,
+        index=True,
+        ondelete="CASCADE",
+    )
+    document_id: uuid.UUID = Field(
+        foreign_key="document_extraction.id", nullable=False, ondelete="CASCADE"
+    )
+    purpose: str = Field(max_length=30, nullable=False)
+    expires_at: datetime = Field(nullable=False)
+    max_uses: int = Field(default=1, nullable=False)
+    use_count: int = Field(default=0, nullable=False)
+    revoked_at: datetime | None = Field(default=None)
+    last_used_at: datetime | None = Field(default=None)
+    last_failure_code: str | None = Field(default=None, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)

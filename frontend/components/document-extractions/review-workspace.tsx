@@ -158,6 +158,10 @@ export function ReviewWorkspace({
     (nextPage: PageResult) => {
       const nextDocument = {
         ...document,
+        status:
+          nextPage.page_status === "extracting"
+            ? ("extracting" as const)
+            : document.status,
         pages: document.pages.map((existing) =>
           existing.page_number === nextPage.page_number ? nextPage : existing,
         ),
@@ -297,6 +301,10 @@ export function ReviewWorkspace({
         parser,
       )
       replacePage(nextPage)
+      if (nextPage.page_status === "extracting") {
+        setMessage(`${requestedLabel} was queued for asynchronous Modal processing.`)
+        return
+      }
       const selected = nextPage.selected_parser?.name
       const selectedCapability = capabilities.find(
         (capability) => capability.name === selected,
@@ -501,17 +509,14 @@ export function ReviewWorkspace({
                   <option
                     key={capability.name}
                     value={capability.name}
-                    disabled={
-                      !capability.available ||
-                      !supportsPage(capability, page.classification)
-                    }
+                    disabled={!capability.available}
                   >
                     {parserLabel(capability)}
                     {capability.version ? ` · ${capability.version}` : ""}
                     {!capability.available
                       ? " · unavailable"
                       : !supportsPage(capability, page.classification)
-                        ? " · incompatible with this page"
+                        ? " · operator override"
                         : ""}
                   </option>
                 ))}

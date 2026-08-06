@@ -240,9 +240,7 @@ class DocumentResult(BaseModel):
     owner_id: uuid.UUID
     source: SourceMetadata
     status: DocumentStatus = DocumentStatus.QUEUED
-    extraction_fingerprint: str | None = Field(
-        default=None, pattern=r"^[a-f0-9]{64}$"
-    )
+    extraction_fingerprint: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     reused_extraction: bool = False
     pages: list[PageResult] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
@@ -272,3 +270,6 @@ class CapabilityResponse(BaseModel):
     max_upload_bytes: int
     max_pages: int
     retry_limits: dict[str, int]
+    storage_provider: str = "postgres"
+    execution_backend: str = "local"
+    modal_enabled: bool = False

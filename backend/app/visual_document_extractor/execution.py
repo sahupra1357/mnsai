@@ -20,7 +20,9 @@ from .models import AdapterResult, PageInput
 
 
 class IsolatedExecutionError(Exception):
-    def __init__(self, code: str, safe_message: str, *, retryable: bool = False) -> None:
+    def __init__(
+        self, code: str, safe_message: str, *, retryable: bool = False
+    ) -> None:
         super().__init__(safe_message)
         self.code = code
         self.safe_message = safe_message

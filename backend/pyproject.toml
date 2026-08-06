@@ -33,6 +33,7 @@ dependencies = [
     "opencv-python==4.10.0.84",
     "opencv-python-headless==4.10.0.84",
     "PyMuPDF==1.25.1",
+    "boto3<2.0.0,>=1.35.0",
 ]
 
 [tool.uv]

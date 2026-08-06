@@ -235,9 +235,7 @@ def _run_office(
             preexec_fn=_office_resource_limiter(config) if os.name == "posix" else None,
         )
         try:
-            stdout, stderr = process.communicate(
-                timeout=config.office_timeout_seconds
-            )
+            stdout, stderr = process.communicate(timeout=config.office_timeout_seconds)
         except subprocess.TimeoutExpired:
             if process.pid is not None and hasattr(os, "killpg"):
                 os.killpg(process.pid, signal.SIGKILL)
@@ -267,7 +265,9 @@ def _office_resource_limiter(config: PreviewConfig):  # type: ignore[no-untyped-
         if config.office_memory_bytes is not None and hasattr(resource, "RLIMIT_AS"):
             _, hard = resource.getrlimit(resource.RLIMIT_AS)
             requested = config.office_memory_bytes
-            limit = requested if hard == resource.RLIM_INFINITY else min(requested, hard)
+            limit = (
+                requested if hard == resource.RLIM_INFINITY else min(requested, hard)
+            )
             try:
                 resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
             except (OSError, ValueError):
@@ -318,7 +318,9 @@ def _render_pdf(
             pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
             _check_pixels(pixmap.width, pixmap.height, config)
             png = pixmap.tobytes("png")
-            return _artifact(png, pixmap.width, pixmap.height, page_number, source_digest)
+            return _artifact(
+                png, pixmap.width, pixmap.height, page_number, source_digest
+            )
         finally:
             document.close()
     except PreviewError:

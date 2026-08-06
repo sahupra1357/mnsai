@@ -119,6 +119,26 @@ def test_identical_upload_reuses_reviewable_result_and_bounding_elements() -> No
     assert reused.pages[0].elements[0].element_id == "page-1-block-1"
 
 
+def test_modal_backend_changes_cache_identity_and_exposes_remote_parsers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = make_service()
+    local_fingerprint = service._extraction_fingerprint(None)
+    monkeypatch.setattr(service, "_modal_configured", lambda: True)
+
+    modal_fingerprint = service._extraction_fingerprint(None)
+    capabilities = service.capabilities()
+    paddleocr = next(
+        item for item in capabilities.adapters if item.name == "paddleocr"
+    )
+
+    assert modal_fingerprint != local_fingerprint
+    assert capabilities.execution_backend == "modal"
+    assert paddleocr.available is True
+    assert paddleocr.version == "3.7.0"
+    assert paddleocr.reason == "Executed remotely on Modal"
+
+
 def test_failed_reprocess_remains_manual_review_required() -> None:
     def failed_result(_page: object) -> AdapterResult:
         return AdapterResult(

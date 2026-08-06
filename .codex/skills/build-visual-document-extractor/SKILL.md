@@ -52,8 +52,38 @@ Define or confirm:
 3. Job states such as `queued`, `classifying`, `extracting`, `fallback`, `needs_review`, `approved`, `failed`, and `cancelled`.
 4. Configurable routing thresholds, retry limits, and feature flags for optional heavyweight or remote models.
 5. API and UI contracts for source preview, extraction results, corrections, approvals, reprocessing, and audit history.
+6. A binary-object storage interface independent of normalized SQL persistence. Support
+   Cloudflare R2 as the default provider and PostgreSQL binary columns as a configurable
+   fallback. Keep source SHA-256, media metadata, object references, extraction
+   fingerprints, normalized results, review state, and audit history in PostgreSQL for
+   both providers. Changing storage providers must not change cache identity or parser
+   contracts.
+7. A parser execution interface independent of deployment location. When Modal execution
+   is explicitly enabled and healthy, dispatch parser work asynchronously to Modal;
+   otherwise run only the parser capabilities available in the Render/backend environment.
+   Report the active execution backend and capability availability without silently
+   claiming unavailable parsers.
 
 Do not couple the UI or persistence layer directly to any parser’s native response.
+
+For remote Modal execution, establish these contracts before implementation:
+
+- Render remains the authorization, job-state, normalized persistence, review, and audit
+  control plane; Modal is an untrusted, bounded parser execution plane.
+- Use cryptographically random URL-safe opaque tokens for source download and result
+  callbacks. Store only token hashes plus non-secret token IDs, purpose, job/document
+  binding, expiry, usage limits, revocation, and audit metadata.
+- Use different tokens for source reads and result writes. Never expose them to browsers,
+  logs, parser output, or persisted normalized results.
+- Allow bounded source-download retries, revoke tokens on terminal job state, compare
+  hashes in constant time, and make result callbacks idempotent by job and attempt ID.
+- Authenticate Render-to-Modal submission separately with Modal endpoint credentials.
+- Validate source checksums and schema-validate callback results before persistence.
+- Do not give Modal unrestricted PostgreSQL credentials. For PostgreSQL binary storage,
+  stream the job-bound source through the authenticated Render endpoint. For R2, prefer a
+  short-lived, object-scoped signed URL so Modal transfers bytes directly with R2.
+- If Modal is disabled or dispatch is unavailable, use configured local adapters and
+  preserve the same normalized attempts, quality gates, retry budgets, and audit model.
 
 For this repository, the pre-implementation plan must also name:
 
@@ -79,6 +109,12 @@ Prefer vertical slices that can be demonstrated:
 9. Add approval, rejection, reprocessing, audit, export, security, and operational controls.
 
 Keep optional parsers behind adapters so the application can start and report capability status even when a heavyweight model is not installed.
+
+Keep heavyweight parser images isolated by dependency family when deploying to Modal.
+Choose GPU resources per parser and measured workload rather than assigning a GPU to
+every function. Docling/native extraction may remain CPU-only; PaddleOCR-VL, MinerU, and
+Marker may use configured GPUs. Cache reproducible model weights in a Modal Volume, while
+keeping immutable user sources in the configured application object store.
 
 ## Route pages
 

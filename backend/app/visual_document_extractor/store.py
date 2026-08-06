@@ -14,6 +14,11 @@ from sqlmodel import Session, select
 
 from app.models import DocumentExtractionRecord, DocumentPreviewArtifactRecord
 from app.visual_document_extractor.models import DocumentResult
+from app.visual_document_extractor.object_storage import (
+    ObjectNotFoundError,
+    ObjectStorage,
+    ObjectStorageError,
+)
 from app.visual_document_extractor.preview import PreviewArtifact
 
 
@@ -162,10 +167,46 @@ document_store = InMemoryDocumentStore()
 class SqlDocumentStore:
     """Durable PostgreSQL/SQLite store with tenant concealment and revisions."""
 
-    def __init__(self, engine: Engine) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        *,
+        object_storage: ObjectStorage | None = None,
+        object_prefix: str = "visual-document-extractor",
+        fallback_to_postgres: bool = False,
+    ) -> None:
         self.engine = engine
+        self.object_storage = object_storage
+        self.object_prefix = object_prefix.strip("/")
+        self.fallback_to_postgres = fallback_to_postgres
+
+    @property
+    def storage_provider(self) -> str:
+        return "r2" if self.object_storage is not None else "postgres"
+
+    def _source_key(self, document: DocumentResult) -> str:
+        return (
+            f"{self.object_prefix}/owners/{document.owner_id}/documents/"
+            f"{document.document_id}/source"
+        )
 
     def create(self, document: DocumentResult, source: bytes) -> DocumentResult:
+        object_key: str | None = None
+        source_bytes: bytes | None = bytes(source)
+        if self.object_storage is not None:
+            object_key = self._source_key(document)
+            try:
+                self.object_storage.put(
+                    object_key,
+                    source,
+                    content_type=document.source.media_type,
+                    expected_sha256=document.source.source_sha256,
+                )
+                source_bytes = None
+            except ObjectStorageError:
+                if not self.fallback_to_postgres:
+                    raise
+                object_key = None
         record = DocumentExtractionRecord(
             id=document.document_id,
             owner_id=document.owner_id,
@@ -173,17 +214,27 @@ class SqlDocumentStore:
             source_sha256=document.source.source_sha256,
             extraction_fingerprint=document.extraction_fingerprint,
             media_type=document.source.media_type,
-            source_bytes=bytes(source),
+            source_bytes=source_bytes,
+            source_storage_provider="r2" if object_key is not None else "postgres",
+            source_object_key=object_key,
             normalized_result=document.model_dump(mode="json"),
             revision=document.revision,
             created_at=document.created_at.replace(tzinfo=None),
             updated_at=document.updated_at.replace(tzinfo=None),
         )
-        with Session(self.engine) as session:
-            if session.get(DocumentExtractionRecord, document.document_id):
-                raise ValueError("Document already exists")
-            session.add(record)
-            session.commit()
+        try:
+            with Session(self.engine) as session:
+                if session.get(DocumentExtractionRecord, document.document_id):
+                    raise ValueError("Document already exists")
+                session.add(record)
+                session.commit()
+        except BaseException:
+            if object_key is not None and self.object_storage is not None:
+                try:
+                    self.object_storage.delete(object_key)
+                except ObjectStorageError:
+                    pass
+            raise
         return document.model_copy(deep=True)
 
     def get(self, document_id: uuid.UUID, owner_id: uuid.UUID) -> DocumentResult:
@@ -246,10 +297,45 @@ class SqlDocumentStore:
             ).first()
             if record is None:
                 raise DocumentNotFoundError("Document not found")
-            content = bytes(record.source_bytes)
+            if record.source_storage_provider == "r2":
+                if self.object_storage is None or not record.source_object_key:
+                    raise SourceNotFoundError("Source storage is unavailable")
+                try:
+                    content = self.object_storage.get(
+                        record.source_object_key,
+                        expected_sha256=record.source_sha256,
+                    )
+                except (ObjectNotFoundError, ObjectStorageError) as exc:
+                    raise SourceNotFoundError("Source storage is unavailable") from exc
+            elif record.source_bytes is not None:
+                content = bytes(record.source_bytes)
+            else:
+                raise SourceNotFoundError("Source not found")
             if hashlib.sha256(content).hexdigest() != record.source_sha256:
                 raise SourceNotFoundError("Source integrity verification failed")
             return content, record.media_type, record.source_name
+
+    def presign_source(
+        self, document_id: uuid.UUID, owner_id: uuid.UUID, *, expires_in: int
+    ) -> str | None:
+        if self.object_storage is None:
+            return None
+        with Session(self.engine) as session:
+            record = session.exec(
+                select(DocumentExtractionRecord).where(
+                    DocumentExtractionRecord.id == document_id,
+                    DocumentExtractionRecord.owner_id == owner_id,
+                )
+            ).first()
+            if (
+                record is None
+                or record.source_storage_provider != "r2"
+                or not record.source_object_key
+            ):
+                return None
+            return self.object_storage.presign_get(
+                record.source_object_key, expires_in=expires_in
+            )
 
     def save(self, document: DocumentResult, owner_id: uuid.UUID) -> DocumentResult:
         if document.owner_id != owner_id:
@@ -299,30 +385,62 @@ class SqlDocumentStore:
                     DocumentPreviewArtifactRecord.document_id == document_id
                 )
             ).all()
+            object_keys = [
+                artifact.object_key
+                for artifact in artifacts
+                if artifact.storage_provider == "r2" and artifact.object_key
+            ]
+            if record.source_storage_provider == "r2" and record.source_object_key:
+                object_keys.append(record.source_object_key)
+            if self.object_storage is not None:
+                for object_key in object_keys:
+                    self.object_storage.delete(object_key)
             for artifact in artifacts:
                 session.delete(artifact)
             session.delete(record)
             session.commit()
-            return True
+        return True
 
 
 class SqlPreviewArtifactCache:
-    def __init__(self, engine: Engine, document_id: uuid.UUID) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        document_id: uuid.UUID,
+        *,
+        object_storage: ObjectStorage | None = None,
+        object_prefix: str = "visual-document-extractor",
+        fallback_to_postgres: bool = False,
+    ) -> None:
         self.engine = engine
         self.document_id = document_id
+        self.object_storage = object_storage
+        self.object_prefix = object_prefix.strip("/")
+        self.fallback_to_postgres = fallback_to_postgres
 
     def _storage_key(self, key: str) -> str:
         return hashlib.sha256(f"{self.document_id}:{key}".encode()).hexdigest()
 
     def get(self, key: str) -> PreviewArtifact | None:
         with Session(self.engine) as session:
-            record = session.get(
-                DocumentPreviewArtifactRecord, self._storage_key(key)
-            )
+            record = session.get(DocumentPreviewArtifactRecord, self._storage_key(key))
             if record is None:
                 return None
+            if record.storage_provider == "r2":
+                if self.object_storage is None or not record.object_key:
+                    return None
+                try:
+                    content = self.object_storage.get(
+                        record.object_key, expected_sha256=record.content_sha256
+                    )
+                except ObjectStorageError:
+                    return None
+            elif record.content is not None:
+                content = bytes(record.content)
+            else:
+                return None
             return PreviewArtifact(
-                content=bytes(record.content),
+                content=content,
                 media_type=record.media_type,
                 width=record.width,
                 height=record.height,
@@ -333,6 +451,27 @@ class SqlPreviewArtifactCache:
 
     def put(self, key: str, artifact: PreviewArtifact) -> None:
         storage_key = self._storage_key(key)
+        object_key: str | None = None
+        content: bytes | None = bytes(artifact.content)
+        provider = "postgres"
+        if self.object_storage is not None:
+            object_key = (
+                f"{self.object_prefix}/documents/{self.document_id}/previews/"
+                f"{storage_key}.png"
+            )
+            try:
+                self.object_storage.put(
+                    object_key,
+                    artifact.content,
+                    content_type=artifact.media_type,
+                    expected_sha256=artifact.content_sha256,
+                )
+                content = None
+                provider = "r2"
+            except ObjectStorageError:
+                if not self.fallback_to_postgres:
+                    raise
+                object_key = None
         with Session(self.engine) as session:
             existing = session.get(DocumentPreviewArtifactRecord, storage_key)
             if existing is not None:
@@ -347,7 +486,9 @@ class SqlPreviewArtifactCache:
                     height=artifact.height,
                     source_sha256=artifact.source_sha256,
                     content_sha256=artifact.content_sha256,
-                    content=bytes(artifact.content),
+                    content=content,
+                    storage_provider=provider,
+                    object_key=object_key,
                 )
             )
             try:

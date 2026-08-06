@@ -102,6 +102,9 @@ export interface CapabilityResponse {
   max_upload_bytes: number
   max_pages: number
   retry_limits: Record<string, number>
+  storage_provider: string
+  execution_backend: string
+  modal_enabled: boolean
 }
 
 export interface PageResult {

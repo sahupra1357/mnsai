@@ -71,6 +71,15 @@ export async function loadCapabilities(): Promise<CapabilityResponse> {
   )
 }
 
+export async function loadDocument(documentId: string): Promise<DocumentResult> {
+  return expectJson<DocumentResult>(
+    await fetch(`${API_ROOT}/${encodeURIComponent(documentId)}`, {
+      credentials: "same-origin",
+      cache: "no-store",
+    }),
+  )
+}
+
 export async function reviewPage(
   documentId: string,
   pageNumber: number,

@@ -32,6 +32,7 @@ from app.visual_document_extractor.intake import (
     validate_upload,
 )
 from app.visual_document_extractor.models import (
+    AdapterCapability,
     AuditEvent,
     CapabilityResponse,
     DocumentResult,
@@ -53,6 +54,7 @@ from app.visual_document_extractor.preview import (
 )
 from app.visual_document_extractor.quality import QualityPolicy
 from app.visual_document_extractor.routing import ExtractionRouter, RoutingPolicy
+from app.visual_document_extractor.storage_config import configured_storage
 from app.visual_document_extractor.store import (
     DocumentStore,
     InMemoryDocumentStore,
@@ -78,6 +80,15 @@ class ServiceLimits:
     max_pages: int
     max_image_pixels: int
     parser_timeout_seconds: float
+
+
+_MODAL_PARSER_VERSIONS = {
+    "docling": "2.114.0",
+    "paddleocr": "3.7.0",
+    "paddleocr-vl": "3.7.0",
+    "mineru": "3.4.4",
+    "marker": "2.0.0",
+}
 
 
 def default_router() -> ExtractionRouter:
@@ -120,9 +131,7 @@ def default_router() -> ExtractionRouter:
             transient_retries_per_adapter=(
                 settings.DOCUMENT_EXTRACTOR_TRANSIENT_RETRIES
             ),
-            max_alternate_attempts=(
-                settings.DOCUMENT_EXTRACTOR_ALTERNATE_ATTEMPTS
-            ),
+            max_alternate_attempts=(settings.DOCUMENT_EXTRACTOR_ALTERNATE_ATTEMPTS),
             max_vision_attempts=settings.DOCUMENT_EXTRACTOR_VISION_ATTEMPTS,
         ),
         quality_policy=QualityPolicy(
@@ -139,24 +148,32 @@ class DocumentExtractionService:
         router: ExtractionRouter | None = None,
         limits: ServiceLimits | None = None,
     ) -> None:
-        self.store = store or (
-            SqlDocumentStore(engine)
-            if settings.DOCUMENT_EXTRACTOR_USE_DURABLE_STORE
-            else InMemoryDocumentStore()
-        )
+        if store is not None:
+            self.store = store
+        elif settings.DOCUMENT_EXTRACTOR_USE_DURABLE_STORE:
+            storage = configured_storage()
+            self.store = SqlDocumentStore(
+                engine,
+                object_storage=storage.object_storage,
+                object_prefix=settings.DOCUMENT_EXTRACTOR_R2_PREFIX,
+                fallback_to_postgres=(
+                    settings.DOCUMENT_EXTRACTOR_STORAGE_FALLBACK_TO_POSTGRES
+                ),
+            )
+        else:
+            self.store = InMemoryDocumentStore()
         self.router = router or default_router()
         self.limits = limits or ServiceLimits(
             max_upload_bytes=settings.DOCUMENT_EXTRACTOR_MAX_UPLOAD_BYTES,
             max_pages=settings.DOCUMENT_EXTRACTOR_MAX_PAGES,
             max_image_pixels=settings.DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS,
-            parser_timeout_seconds=(
-                settings.DOCUMENT_EXTRACTOR_PARSER_TIMEOUT_SECONDS
-            ),
+            parser_timeout_seconds=(settings.DOCUMENT_EXTRACTOR_PARSER_TIMEOUT_SECONDS),
         )
 
     def capabilities(self) -> CapabilityResponse:
+        modal_configured = self._modal_configured()
         return CapabilityResponse(
-            adapters=self.router.capabilities(),
+            adapters=self._effective_capabilities(modal_configured=modal_configured),
             supported_extensions=list(SUPPORTED_EXTENSIONS),
             max_upload_bytes=self.limits.max_upload_bytes,
             max_pages=self.limits.max_pages,
@@ -164,11 +181,47 @@ class DocumentExtractionService:
                 "transient_retries_per_adapter": (
                     settings.DOCUMENT_EXTRACTOR_TRANSIENT_RETRIES
                 ),
-                "alternate_attempts": (
-                    settings.DOCUMENT_EXTRACTOR_ALTERNATE_ATTEMPTS
-                ),
+                "alternate_attempts": (settings.DOCUMENT_EXTRACTOR_ALTERNATE_ATTEMPTS),
                 "vision_attempts": settings.DOCUMENT_EXTRACTOR_VISION_ATTEMPTS,
             },
+            storage_provider=(
+                self.store.storage_provider
+                if isinstance(self.store, SqlDocumentStore)
+                else "memory"
+            ),
+            execution_backend=("modal" if modal_configured else "local"),
+            modal_enabled=modal_configured,
+        )
+
+    def _effective_capabilities(
+        self, *, modal_configured: bool | None = None
+    ) -> list[AdapterCapability]:
+        if modal_configured is None:
+            modal_configured = self._modal_configured()
+        capabilities = self.router.capabilities()
+        if not modal_configured:
+            return capabilities
+        return [
+            capability.model_copy(
+                update={
+                    "version": _MODAL_PARSER_VERSIONS[capability.name],
+                    "available": True,
+                    "reason": "Executed remotely on Modal",
+                }
+            )
+            if capability.name in _MODAL_PARSER_VERSIONS
+            else capability
+            for capability in capabilities
+        ]
+
+    def _modal_configured(self) -> bool:
+        return bool(
+            settings.DOCUMENT_EXTRACTOR_MODAL_ENABLED
+            and isinstance(self.store, SqlDocumentStore)
+            and settings.DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL
+            and settings.DOCUMENT_EXTRACTOR_MODAL_KEY
+            and settings.DOCUMENT_EXTRACTOR_MODAL_SECRET
+            and settings.DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL
         )
 
     def ingest(
@@ -301,16 +354,20 @@ class DocumentExtractionService:
         return self.store.save(document, owner_id)
 
     def _extraction_fingerprint(self, operator_parser: str | None) -> str:
+        modal_configured = self._modal_configured()
         capabilities = sorted(
             (
                 capability.name,
                 capability.version,
                 capability.available,
             )
-            for capability in self.router.capabilities()
+            for capability in self._effective_capabilities(
+                modal_configured=modal_configured
+            )
         )
         material = {
-            "pipeline_contract": "visual-document-extractor-cache-v1",
+            "pipeline_contract": "visual-document-extractor-cache-v2",
+            "execution_backend": "modal" if modal_configured else "local",
             "operator_parser": operator_parser,
             "capabilities": capabilities,
             "quality_policy": {
@@ -331,9 +388,9 @@ class DocumentExtractionService:
                 "max_vision_attempts": self.router.policy.max_vision_attempts,
             },
         }
-        encoded = json.dumps(
-            material, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
+        encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         return hashlib.sha256(encoded).hexdigest()
 
     def get(self, document_id: uuid.UUID, owner_id: uuid.UUID) -> DocumentResult:
@@ -565,8 +622,7 @@ class DocumentExtractionService:
 
     def _stabilize_office_page_count(self, validated: ValidatedSource) -> None:
         docx_media_type = (
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
         if validated.metadata.media_type != docx_media_type:
             return
@@ -581,18 +637,14 @@ class DocumentExtractionService:
                     office_timeout_seconds=(
                         settings.DOCUMENT_EXTRACTOR_OFFICE_TIMEOUT_SECONDS
                     ),
-                    max_output_pixels=(
-                        settings.DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS
-                    ),
+                    max_output_pixels=(settings.DOCUMENT_EXTRACTOR_MAX_RENDERED_PIXELS),
                     max_concurrent_office=(
                         settings.DOCUMENT_EXTRACTOR_MAX_PARSER_PROCESSES
                     ),
                     office_memory_bytes=(
                         settings.DOCUMENT_EXTRACTOR_PARSER_MEMORY_MB * 1024 * 1024
                     ),
-                    office_cpu_seconds=(
-                        settings.DOCUMENT_EXTRACTOR_PARSER_CPU_SECONDS
-                    ),
+                    office_cpu_seconds=(settings.DOCUMENT_EXTRACTOR_PARSER_CPU_SECONDS),
                 ),
             )
             import fitz
