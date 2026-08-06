@@ -93,6 +93,27 @@ export function ReviewWorkspace({
     initialDocument.pages[0]?.page_number ?? 1,
   )
   const page = pageWithNumber(document, pageNumber)
+  const [viewCandidateId, setViewCandidateId] = useState<string | null>(
+    page?.selected_candidate_id ?? null,
+  )
+  const viewCandidate =
+    page?.candidates?.find(
+      (candidate) => candidate.candidate_id === viewCandidateId,
+    ) ?? null
+  const displayPage =
+    page && viewCandidate && viewCandidate.candidate_id !== page.selected_candidate_id
+      ? {
+          ...page,
+          selected_parser: viewCandidate.parser,
+          confidence: viewCandidate.confidence,
+          confidence_source: viewCandidate.confidence_source,
+          elements: viewCandidate.elements,
+          warnings: viewCandidate.warnings,
+        }
+      : page
+  const viewingHistorical = Boolean(
+    viewCandidate && viewCandidate.candidate_id !== page?.selected_candidate_id,
+  )
   const [drafts, setDrafts] = useState<Record<string, string>>(() =>
     page ? draftsForPage(page) : {},
   )
@@ -173,6 +194,7 @@ export function ReviewWorkspace({
       setDrafts(nextDrafts)
       setSavedDrafts(nextDrafts)
       setSelectedElementId(nextPage.elements[0]?.element_id ?? null)
+      setViewCandidateId(nextPage.selected_candidate_id ?? null)
     },
     [document, onDocumentChange],
   )
@@ -194,6 +216,7 @@ export function ReviewWorkspace({
       setDrafts(nextDrafts)
       setSavedDrafts(nextDrafts)
       setSelectedElementId(nextPage.elements[0]?.element_id ?? null)
+      setViewCandidateId(nextPage.selected_candidate_id ?? null)
       setError(null)
       setMessage(null)
     },
@@ -239,6 +262,32 @@ export function ReviewWorkspace({
       reviewed_text: drafts[element.element_id] ?? element.text,
     }),
   )
+
+  function selectCandidate(candidateId: string) {
+    if (
+      dirty &&
+      !window.confirm(
+        "You have unsaved corrections. Switch extraction results and discard them?",
+      )
+    ) {
+      return
+    }
+    const candidate = page.candidates.find(
+      (item) => item.candidate_id === candidateId,
+    )
+    if (!candidate) return
+    setViewCandidateId(candidateId)
+    const candidatePage =
+      candidate.candidate_id === page.selected_candidate_id
+        ? page
+        : { ...page, elements: candidate.elements }
+    const nextDrafts = draftsForPage(candidatePage)
+    setDrafts(nextDrafts)
+    setSavedDrafts(nextDrafts)
+    setSelectedElementId(candidate.elements[0]?.element_id ?? null)
+    setMessage(null)
+    setError(null)
+  }
 
   async function submitReview(action: ReviewAction) {
     setBusyAction(action)
@@ -445,21 +494,58 @@ export function ReviewWorkspace({
         </Button>
       </nav>
 
+      {page.candidates.length > 0 && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2">
+          <div>
+            <label htmlFor="extraction-result-select" className="text-sm font-medium">
+              Extraction result
+            </label>
+            <p className="text-xs text-muted-foreground">
+              The highest-confidence passing result is selected automatically.
+            </p>
+          </div>
+          <select
+            id="extraction-result-select"
+            className="h-9 max-w-full rounded-md border bg-background px-3 text-sm"
+            value={viewCandidateId ?? page.selected_candidate_id ?? ""}
+            onChange={(event) => selectCandidate(event.target.value)}
+          >
+            {[...page.candidates]
+              .sort((left, right) => right.created_at.localeCompare(left.created_at))
+              .map((candidate) => (
+                <option key={candidate.candidate_id} value={candidate.candidate_id}>
+                  {PARSER_LABELS[candidate.parser.name] ?? candidate.parser.name}
+                  {candidate.parser.version ? ` · ${candidate.parser.version}` : ""}
+                  {candidate.confidence === null
+                    ? " · confidence unavailable"
+                    : ` · ${Math.round(candidate.confidence * 100)}%`}
+                  {candidate.candidate_id === page.selected_candidate_id
+                    ? " · selected best"
+                    : ""}
+                </option>
+              ))}
+          </select>
+          {viewingHistorical && (
+            <Badge variant="outline">Historical result · read only</Badge>
+          )}
+        </section>
+      )}
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SourceViewer
           key={page.page_number}
           documentId={document.document_id}
           mediaType={document.source.media_type}
-          page={page}
+          page={displayPage!}
           selectedElementId={selectedElementId}
           onSelectElement={setSelectedElementId}
         />
         {showPageDetails ? (
           <ExtractionPanel
-            page={page}
+            page={displayPage!}
             drafts={drafts}
             selectedElementId={selectedElementId}
-            disabled={busyAction !== null}
+            disabled={busyAction !== null || viewingHistorical}
             onSelectElement={setSelectedElementId}
             onChange={(elementId, value) => {
               setDrafts((current) => ({ ...current, [elementId]: value }))
@@ -468,7 +554,7 @@ export function ReviewWorkspace({
           />
         ) : (
           <JsonExtractionPanel
-            page={page}
+            page={displayPage!}
             onViewDetails={() => setShowPageDetails(true)}
           />
         )}
@@ -565,7 +651,7 @@ export function ReviewWorkspace({
             <Button
               type="button"
               variant="outline"
-              disabled={busyAction !== null}
+              disabled={busyAction !== null || viewingHistorical}
               onClick={() => void submitReview("save")}
             >
               {busyAction === "save" ? (
@@ -578,7 +664,7 @@ export function ReviewWorkspace({
             <Button
               type="button"
               variant="destructive"
-              disabled={busyAction !== null}
+              disabled={busyAction !== null || viewingHistorical}
               onClick={() => void submitReview("reject")}
             >
               {busyAction === "reject" ? (
@@ -590,7 +676,7 @@ export function ReviewWorkspace({
             </Button>
             <Button
               type="button"
-              disabled={busyAction !== null}
+              disabled={busyAction !== null || viewingHistorical}
               onClick={() => void submitReview("approve")}
             >
               {busyAction === "approve" ? (

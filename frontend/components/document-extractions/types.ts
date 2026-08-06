@@ -55,6 +55,17 @@ export interface ParserSelection {
   rationale: string
 }
 
+export interface ExtractionCandidate {
+  candidate_id: string
+  parser: ParserSelection
+  confidence: number | null
+  confidence_source: string | null
+  quality_passed: boolean
+  elements: ExtractedElement[]
+  warnings: string[]
+  created_at: string
+}
+
 export interface QualitySignal {
   name: string
   passed: boolean | null
@@ -115,6 +126,8 @@ export interface PageResult {
   classification: string
   routing_reasons: string[]
   selected_parser: ParserSelection | null
+  candidates: ExtractionCandidate[]
+  selected_candidate_id: string | null
   attempts: ExtractionAttempt[]
   elements: ExtractedElement[]
   semantic_result?: {

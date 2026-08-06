@@ -15,6 +15,13 @@ from fastapi import (
 
 from app.api.deps import CurrentUser
 from app.core.config import settings
+from app.core.db import engine
+from app.visual_document_extractor.api_keys import (
+    ApiKeyCreated,
+    ApiKeyCreateRequest,
+    ApiKeyMetadata,
+    ApiKeyRepository,
+)
 from app.visual_document_extractor.export import document_content
 from app.visual_document_extractor.intake import IntakeValidationError
 from app.visual_document_extractor.modal_execution import ModalDispatcher
@@ -99,6 +106,14 @@ async def create_document_extraction(
     file: UploadFile = File(...),
     parser: str | None = Form(default=None),
 ) -> DocumentResult:
+    return await _ingest_upload(current_user.id, file, parser)
+
+
+async def _ingest_upload(
+    owner_id: uuid.UUID,
+    file: UploadFile,
+    parser: str | None,
+) -> DocumentResult:
     service = get_service()
     content = await file.read(service.limits.max_upload_bytes + 1)
     if len(content) > service.limits.max_upload_bytes:
@@ -113,13 +128,13 @@ async def create_document_extraction(
         coordinator = get_modal_coordinator()
         if settings.DOCUMENT_EXTRACTOR_MODAL_ENABLED and coordinator is not None:
             return coordinator.submit(
-                owner_id=current_user.id,
+                owner_id=owner_id,
                 source_name=file.filename or "upload",
                 content=content,
                 operator_parser=parser,
             )
         return service.ingest(
-            owner_id=current_user.id,
+            owner_id=owner_id,
             source_name=file.filename or "upload",
             content=content,
             operator_parser=parser,
@@ -133,6 +148,66 @@ async def create_document_extraction(
         raise HTTPException(status_code=status_code, detail=exc.safe_message)
     except InvalidParserOverrideError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/api-keys", response_model=ApiKeyCreated, status_code=status.HTTP_201_CREATED
+)
+def create_document_extraction_api_key(
+    request: ApiKeyCreateRequest,
+    current_user: CurrentUser,
+) -> ApiKeyCreated:
+    """Create an API key; the plaintext value is returned exactly once."""
+    return ApiKeyRepository(engine).create(current_user.id, request.name)
+
+
+@router.get("/api-keys", response_model=list[ApiKeyMetadata])
+def list_document_extraction_api_keys(
+    current_user: CurrentUser,
+) -> list[ApiKeyMetadata]:
+    return ApiKeyRepository(engine).list(current_user.id)
+
+
+@router.delete("/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_document_extraction_api_key(
+    key_id: uuid.UUID,
+    current_user: CurrentUser,
+) -> Response:
+    if not ApiKeyRepository(engine).revoke(current_user.id, key_id):
+        raise HTTPException(status_code=404, detail="API key not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/programmatic", response_model=DocumentResult, status_code=status.HTTP_201_CREATED
+)
+async def create_programmatic_document_extraction(
+    file: UploadFile = File(...),
+    parser: str | None = Form(default=None),
+    x_api_key: str | None = Header(default=None),
+) -> DocumentResult:
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="A valid X-API-Key is required")
+    owner_id = ApiKeyRepository(engine).authenticate(x_api_key)
+    if owner_id is None:
+        raise HTTPException(status_code=401, detail="A valid X-API-Key is required")
+    return await _ingest_upload(owner_id, file, parser)
+
+
+@router.get("/programmatic/{document_id}", response_model=DocumentResult)
+def get_programmatic_document_extraction(
+    document_id: uuid.UUID,
+    x_api_key: str | None = Header(default=None),
+) -> DocumentResult:
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="A valid X-API-Key is required")
+    owner_id = ApiKeyRepository(engine).authenticate(x_api_key)
+    if owner_id is None:
+        raise HTTPException(status_code=401, detail="A valid X-API-Key is required")
+    try:
+        return get_service().get(document_id, owner_id)
+    except DocumentNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found")
 
 
 def _bearer_token(authorization: str | None) -> str:

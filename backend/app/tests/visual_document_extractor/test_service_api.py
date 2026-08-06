@@ -262,6 +262,50 @@ def test_service_preserves_original_text_and_audits_review() -> None:
     assert reprocessed.audit_events[-1].details["parser"] == "paddleocr"
 
 
+def test_reprocess_retains_candidates_and_selects_highest_passing_confidence() -> None:
+    def adapter(confidence: float) -> PaddleOCRAdapter:
+        def result(_page: object) -> AdapterResult:
+            return AdapterResult(
+                attempt=ExtractionAttempt(
+                    parser="paddleocr",
+                    version="test",
+                    status=AttemptStatus.SUCCEEDED,
+                    confidence=confidence,
+                ),
+                elements=[
+                    ExtractedElement(
+                        element_id=f"result-{confidence}",
+                        text=f"Confidence {confidence}",
+                        reading_order=0,
+                        confidence=confidence,
+                    )
+                ],
+            )
+
+        return PaddleOCRAdapter(executor=result, version="test")
+
+    service = DocumentExtractionService(
+        store=InMemoryDocumentStore(),
+        router=ExtractionRouter([adapter(0.80)]),
+    )
+    document = service.ingest(
+        owner_id=OWNER_ID, source_name="scan.png", content=_png_bytes()
+    )
+    for confidence, reason in ((0.96, "higher confidence"), (0.70, "lower confidence")):
+        service.router = ExtractionRouter([adapter(confidence)])
+        page = service.reprocess_page(
+            document.document_id,
+            1,
+            OWNER_ID,
+            ReprocessRequest(parser="paddleocr", reason=reason),
+        )
+
+    assert len(page.candidates) == 3
+    assert page.confidence == pytest.approx(0.96)
+    assert page.elements[0].text == "Confidence 0.96"
+    assert page.selected_candidate_id == page.candidates[1].candidate_id
+
+
 def test_authenticated_api_upload_get_source_and_reject_invalid(
     client, monkeypatch
 ) -> None:
@@ -325,3 +369,45 @@ def test_authenticated_api_upload_get_source_and_reject_invalid(
     deleted = client.delete(f"/api/v1/document-extractions/{document_id}")
     assert deleted.status_code == 204
     assert client.get(f"/api/v1/document-extractions/{document_id}").status_code == 404
+
+
+def test_programmatic_upload_requires_and_uses_owner_scoped_api_key(
+    client, monkeypatch
+) -> None:
+    service = make_service()
+
+    class FakeKeys:
+        def __init__(self, _engine) -> None:
+            pass
+
+        def authenticate(self, candidate: str) -> uuid.UUID | None:
+            return OWNER_ID if candidate == "valid-key" else None
+
+    monkeypatch.setattr(document_extractions, "get_service", lambda: service)
+    monkeypatch.setattr(document_extractions, "ApiKeyRepository", FakeKeys)
+
+    missing = client.post(
+        "/api/v1/document-extractions/programmatic",
+        files={"file": ("scan.png", _png_bytes(), "image/png")},
+    )
+    invalid = client.post(
+        "/api/v1/document-extractions/programmatic",
+        headers={"X-API-Key": "invalid-key"},
+        files={"file": ("scan.png", _png_bytes(), "image/png")},
+    )
+    valid = client.post(
+        "/api/v1/document-extractions/programmatic",
+        headers={"X-API-Key": "valid-key"},
+        files={"file": ("scan.png", _png_bytes(), "image/png")},
+    )
+
+    assert missing.status_code == 401
+    assert invalid.status_code == 401
+    assert valid.status_code == 201
+    assert valid.json()["owner_id"] == str(OWNER_ID)
+    status_response = client.get(
+        f"/api/v1/document-extractions/programmatic/{valid.json()['document_id']}",
+        headers={"X-API-Key": "valid-key"},
+    )
+    assert status_response.status_code == 200
+    assert status_response.json()["document_id"] == valid.json()["document_id"]

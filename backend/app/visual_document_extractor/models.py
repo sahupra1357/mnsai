@@ -207,6 +207,17 @@ class ExtractionSnapshot(BaseModel):
     captured_at: datetime = Field(default_factory=utc_now)
 
 
+class ExtractionCandidate(BaseModel):
+    candidate_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    parser: ParserSelection
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    confidence_source: str | None = None
+    quality_passed: bool = False
+    elements: list[ExtractedElement] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class PageResult(BaseModel):
     page_number: int = Field(ge=1)
     page_status: PageStatus = PageStatus.PENDING
@@ -221,6 +232,8 @@ class PageResult(BaseModel):
     attempts: list[ExtractionAttempt] = Field(default_factory=list)
     elements: list[ExtractedElement] = Field(default_factory=list)
     semantic_result: dict[str, Any] | None = None
+    candidates: list[ExtractionCandidate] = Field(default_factory=list)
+    selected_candidate_id: uuid.UUID | None = None
     extraction_history: list[ExtractionSnapshot] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     review: ReviewState = Field(default_factory=ReviewState)

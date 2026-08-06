@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from app.core.config import settings
 from app.models import DocumentExtractionJobRecord, DocumentJobTokenRecord
 
+from .candidates import add_candidate, preserve_current_candidate, select_best_candidate
 from .classification import classify_document
 from .intake import IntakeLimits, validate_upload
 from .modal_execution import (
@@ -36,7 +37,6 @@ from .models import (
     PageInput,
     PageResult,
     PageStatus,
-    ParserSelection,
     utc_now,
 )
 from .quality import validate_result
@@ -430,6 +430,7 @@ class ModalExtractionCoordinator:
                 "The requested parser is not available in Modal",
             )
         selected = parser or _PRIMARY_BY_CLASSIFICATION[page.classification.value]
+        preserve_current_candidate(page)
         if page.elements:
             page.extraction_history.append(
                 ExtractionSnapshot(
@@ -472,7 +473,6 @@ class ModalExtractionCoordinator:
             return document
         failed = callback.status == "failed" or callback.result is None
         assessment = None
-        selected_via = "modal"
         if not failed:
             result = callback.result
             assert result is not None
@@ -496,6 +496,12 @@ class ModalExtractionCoordinator:
                 result.attempt.model_copy(
                     update={"quality_signals": list(assessment.signals)}
                 )
+            )
+            add_candidate(
+                page,
+                result,
+                quality_passed=assessment.passed,
+                rationale=f"Modal {job.operator_parser or result.attempt.parser} result",
             )
             if not assessment.passed:
                 next_parser = self._next_modal_parser(page, job, result)
@@ -525,28 +531,21 @@ class ModalExtractionCoordinator:
                 if provider_outcome.selected_result is not None:
                     result = provider_outcome.selected_result
                     assessment = provider_outcome.assessment
-                    selected_via = "remote_provider_fallback"
-            page.elements = result.elements
-            page.warnings.extend(result.warnings)
-            page.confidence = result.attempt.confidence
-            page.confidence_source = (
-                f"{result.attempt.parser}:page_mean"
-                if result.attempt.confidence is not None
-                else None
-            )
-            page.selected_parser = ParserSelection(
-                name=result.attempt.parser,
-                version=result.attempt.version,
-                run_id=result.attempt.run_id,
-                rationale=(
-                    f"Selected via {selected_via}"
-                    if assessment is not None and assessment.passed
-                    else f"Best available {selected_via} result requires manual review"
-                ),
+                    add_candidate(
+                        page,
+                        result,
+                        quality_passed=(
+                            assessment is not None and assessment.passed
+                        ),
+                        rationale="Selected via remote provider fallback",
+                    )
+            selected_candidate = select_best_candidate(page)
+            selected_passed = bool(
+                selected_candidate is not None and selected_candidate.quality_passed
             )
             page.page_status = (
                 PageStatus.NEEDS_REVIEW
-                if assessment is not None and assessment.passed
+                if selected_passed
                 else PageStatus.MANUAL_REVIEW_REQUIRED
             )
             page.extraction_history.append(
@@ -614,23 +613,19 @@ class ModalExtractionCoordinator:
                 page.warnings.append("Modal parser failed; manual review is required")
             else:
                 provider_assessment = provider_outcome.assessment
-                page.elements = provider_result.elements
-                page.warnings.extend(provider_result.warnings)
-                page.confidence = provider_result.attempt.confidence
-                page.confidence_source = (
-                    f"{provider_result.attempt.parser}:page_mean"
-                    if provider_result.attempt.confidence is not None
-                    else None
-                )
-                page.selected_parser = ParserSelection(
-                    name=provider_result.attempt.parser,
-                    version=provider_result.attempt.version,
-                    run_id=provider_result.attempt.run_id,
+                add_candidate(
+                    page,
+                    provider_result,
+                    quality_passed=(
+                        provider_assessment is not None and provider_assessment.passed
+                    ),
                     rationale="Selected via remote provider fallback",
                 )
+                selected_candidate = select_best_candidate(page)
                 page.page_status = (
                     PageStatus.NEEDS_REVIEW
-                    if provider_assessment is not None and provider_assessment.passed
+                    if selected_candidate is not None
+                    and selected_candidate.quality_passed
                     else PageStatus.MANUAL_REVIEW_REQUIRED
                 )
                 failed = False

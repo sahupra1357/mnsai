@@ -18,6 +18,11 @@ from app.visual_document_extractor.adapters import (
     PaddleOCRVLAdapter,
     SecondaryOCRAdapter,
 )
+from app.visual_document_extractor.candidates import (
+    add_candidate,
+    preserve_current_candidate,
+    select_best_candidate,
+)
 from app.visual_document_extractor.classification import (
     PageEvidence,
     classify_document,
@@ -296,8 +301,7 @@ class DocumentExtractionService:
                 elements = selected.elements
                 warnings.extend(selected.warnings)
 
-            document.pages.append(
-                PageResult(
+            page_result = PageResult(
                     page_number=decision.page_number,
                     page_status=page_status,
                     confidence=(
@@ -347,7 +351,19 @@ class DocumentExtractionService:
                         )
                     ],
                 )
-            )
+            if selected is not None:
+                add_candidate(
+                    page_result,
+                    selected,
+                    quality_passed=not outcome.manual_review_required,
+                    rationale="; ".join(outcome.routing_reasons)
+                    or "best passing candidate",
+                )
+                select_best_candidate(page_result)
+                page_result.warnings = list(
+                    dict.fromkeys([*validated.warnings, *page_result.warnings])
+                )
+            document.pages.append(page_result)
 
         document.status = DocumentStatus.NEEDS_REVIEW
         document.updated_at = utc_now()
@@ -461,6 +477,7 @@ class DocumentExtractionService:
     ) -> PageResult:
         document = self.store.get(document_id, owner_id)
         page = self._page(document, page_number)
+        preserve_current_candidate(page)
         self._validate_parser(request.parser)
         content, media_type, _ = self.store.get_source(document_id, owner_id)
         if page.elements:
@@ -494,20 +511,13 @@ class DocumentExtractionService:
             page.page_status = PageStatus.MANUAL_REVIEW_REQUIRED
         else:
             selected = outcome.selected_result
-            page.selected_parser = ParserSelection(
-                name=selected.attempt.parser,
-                version=selected.attempt.version,
-                run_id=selected.attempt.run_id,
+            add_candidate(
+                page,
+                selected,
+                quality_passed=True,
                 rationale=f"Reviewer reprocess: {request.reason}",
             )
-            page.confidence = selected.attempt.confidence
-            page.confidence_source = (
-                f"{selected.attempt.parser}:page_mean"
-                if selected.attempt.confidence is not None
-                else None
-            )
-            page.elements = selected.elements
-            page.warnings.extend(selected.warnings)
+            select_best_candidate(page)
             page.extraction_history.append(
                 ExtractionSnapshot(
                     parser_run_id=selected.attempt.run_id,

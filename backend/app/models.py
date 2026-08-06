@@ -322,3 +322,20 @@ class DocumentJobTokenRecord(SQLModel, table=True):
     last_used_at: datetime | None = Field(default=None)
     last_failure_code: str | None = Field(default=None, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class DocumentExtractionApiKeyRecord(SQLModel, table=True):
+    """Revocable, owner-scoped credential for programmatic document uploads."""
+
+    __tablename__ = "document_extraction_api_key"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    name: str = Field(max_length=100)
+    key_prefix: str = Field(max_length=20, index=True)
+    key_hash: str = Field(max_length=64, unique=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    last_used_at: datetime | None = Field(default=None)
+    revoked_at: datetime | None = Field(default=None, index=True)

@@ -12,6 +12,11 @@ This package is independent of the legacy `app.gptocr` implementation.
 - Owner-scoped source/result access
 - Review corrections stored separately from parser text, decisions, reprocessing, and
   audit events
+- Every non-empty parser result is retained as an extraction candidate. The review UI
+  defaults to the highest-confidence candidate that passed deterministic quality gates
+  and provides a read-only dropdown for inspecting older candidates.
+- Revocable, owner-scoped API keys for programmatic multipart uploads. Only API-key
+  hashes are stored and the plaintext value is returned once at creation.
 - Capability-driven page reprocessing from the review UI: reviewers can use the
   automatic chain or request an available parser/model such as Tesseract, Mistral OCR,
   GPT-5.6 Terra, or GPT-5.6 Sol. The requested adapter runs first; bounded quality
@@ -228,6 +233,39 @@ expiry.
    use `DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL`.
 7. Smoke-test upload, queued polling, source/preview access, review save/approve,
    duplicate upload reuse, reprocessing, and deletion.
+
+## Programmatic uploads with an API key
+
+API-key management requires the normal authenticated web/JWT session. Create a named
+key with the authenticated endpoint below; copy `api_key` from the response immediately
+because it cannot be recovered later:
+
+```bash
+curl -X POST "https://<service>.onrender.com/api/v1/document-extractions/api-keys" \
+  -H "Authorization: Bearer <user-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"document-ingestion"}'
+```
+
+Upload from an application with the returned key. Omit `parser` for automatic routing,
+or pass a configured parser such as `paddleocr-vl`:
+
+```bash
+curl -X POST "https://<service>.onrender.com/api/v1/document-extractions/programmatic" \
+  -H "X-API-Key: <api-key>" \
+  -F "file=@/absolute/path/document.pdf" \
+  -F "parser=paddleocr-vl"
+```
+
+List key metadata with `GET /api/v1/document-extractions/api-keys` and revoke a key
+with `DELETE /api/v1/document-extractions/api-keys/{key_id}` using the normal user
+access token. Revocation is immediate. Never place an API key in a browser bundle,
+query string, source repository, or logs.
+
+The programmatic endpoint returns the same `DocumentResult` contract as the frontend.
+With Modal enabled, a `queued` or `extracting` result is expected. Poll
+`GET /api/v1/document-extractions/programmatic/{document_id}` with the same
+`X-API-Key` until the document reaches a review state.
 
 R2 and PostgreSQL cannot participate in one atomic transaction. Deletion therefore
 fails closed: SQL metadata is retained if an R2 deletion fails so the operation can be
