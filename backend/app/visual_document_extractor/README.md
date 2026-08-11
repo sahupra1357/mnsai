@@ -259,8 +259,12 @@ curl -X POST "https://<service>.onrender.com/api/v1/document-extractions/program
 
 List key metadata with `GET /api/v1/document-extractions/api-keys` and revoke a key
 with `DELETE /api/v1/document-extractions/api-keys/{key_id}` using the normal user
-access token. Revocation is immediate. Never place an API key in a browser bundle,
-query string, source repository, or logs.
+access token. Rotate an active key with
+`POST /api/v1/document-extractions/api-keys/{key_id}/rotate`; rotation atomically
+revokes the old key and returns the replacement plaintext exactly once. The authenticated
+settings page provides the same create, copy, rotate, and revoke workflow. Revocation is
+immediate. Never place an API key in a browser bundle, query string, source repository,
+or logs.
 
 The programmatic endpoint returns the same `DocumentResult` contract as the frontend.
 With Modal enabled, a `queued` or `extracting` result is expected. Poll

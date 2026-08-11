@@ -6,6 +6,7 @@ import ChangePassword from "@/components/user-settings/change-password"
 import DeleteAccount from "@/components/user-settings/delete-account"
 import UserInformation from "@/components/user-settings/user-information"
 import ProfilePhoto from "@/components/user-settings/profile-photo"
+import ApiKeys from "@/components/user-settings/api-keys"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface SettingsTab {
@@ -21,6 +22,7 @@ const tabsConfig: SettingsTab[] = [
   { title: "My profile", component: UserInformation },
   { title: "Password", component: ChangePassword },
   { title: "Appearance", component: Appearance },
+  { title: "API keys", component: ApiKeys },
   // The public profile hero's headshot — only superusers own that page.
   { title: "Profile photo", component: ProfilePhoto, superuserOnly: true },
   // Superusers can't delete their own account.
@@ -44,7 +46,7 @@ export default function SettingsPage() {
       {/* Keyed by title, not index, so the selected tab survives the list
           changing when the current user resolves. */}
       <Tabs defaultValue={tabsConfig[0].title}>
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           {finalTabs.map((tab) => (
             <TabsTrigger key={tab.title} value={tab.title}>
               {tab.title}

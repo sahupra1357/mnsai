@@ -178,6 +178,17 @@ def revoke_document_extraction_api_key(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/api-keys/{key_id}/rotate", response_model=ApiKeyCreated)
+def rotate_document_extraction_api_key(
+    key_id: uuid.UUID,
+    current_user: CurrentUser,
+) -> ApiKeyCreated:
+    replacement = ApiKeyRepository(engine).rotate(current_user.id, key_id)
+    if replacement is None:
+        raise HTTPException(status_code=404, detail="Active API key not found")
+    return replacement
+
+
 @router.post(
     "/programmatic", response_model=DocumentResult, status_code=status.HTTP_201_CREATED
 )
