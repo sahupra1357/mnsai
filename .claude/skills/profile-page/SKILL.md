@@ -1,11 +1,11 @@
 ---
 name: profile-page
-description: How to build and evolve the mnsAI homepage profile/portfolio page — sections, components, content model, and design rules. Use whenever editing frontend/app/page.tsx or components/profile/*.
+description: How to build and evolve the mnsAI homepage profile/portfolio page — sections, components, content model, and design rules. Use whenever editing frontend/app/profile/page.tsx or components/profile/*.
 ---
 
 # Profile Page (Homepage)
 
-`frontend/app/page.tsx` is a professional profile page for **Pradeep Sahu** — an AI engineer specializing in Generative AI and multi-agent systems, offering project services. The audience is prospective customers and collaborators deciding whether to engage him.
+`frontend/app/profile/page.tsx` is a professional profile page for **Pradeep Sahu** — an AI engineer specializing in Generative AI and multi-agent systems, offering project services. The audience is prospective customers and collaborators deciding whether to engage him.
 
 **Content source:** all copy comes from `docs/profile-draft.md` (derived from `docs/resume.md`). Never invent facts. Where the v3 structure calls for content that doesn't exist yet (see the placeholder rule below), render an explicit **blank placeholder**, never fabricated data.
 

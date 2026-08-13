@@ -45,10 +45,10 @@ const ChangePassword = () => {
 
   return (
     <div className="max-w-full">
-      <h3 className="text-sm font-semibold py-4">Change Password</h3>
+      <h3 className="text-sm font-semibold">Change Password</h3>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full md:w-1/2 flex flex-col gap-4"
+        className="mt-6 flex w-full max-w-md flex-col gap-4"
       >
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="current_password">Current Password *</Label>

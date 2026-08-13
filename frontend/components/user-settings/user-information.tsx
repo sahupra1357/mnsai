@@ -66,10 +66,10 @@ const UserInformation = () => {
 
   return (
     <div className="max-w-full">
-      <h3 className="text-sm font-semibold py-4">User Information</h3>
+      <h3 className="text-sm font-semibold">User Information</h3>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full md:w-1/2"
+        className="mt-6 w-full max-w-md"
       >
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="name">Full name</Label>
