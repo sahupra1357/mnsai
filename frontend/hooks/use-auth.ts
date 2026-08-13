@@ -63,7 +63,7 @@ const useAuth = () => {
       }
     },
     onSuccess: () => {
-      window.location.href = "/dashboard"
+      window.location.href = "/"
     },
     onError: (err: Record<string, unknown>) => {
       let errDetail = err?.detail

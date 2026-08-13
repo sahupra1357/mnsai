@@ -123,8 +123,8 @@ const ProfilePhoto = () => {
 
   return (
     <div className="max-w-full">
-      <h3 className="text-sm font-semibold py-4">Profile Photo</h3>
-      <p className="text-sm text-muted-foreground mb-6 max-w-prose">
+      <h3 className="text-sm font-semibold">Profile Photo</h3>
+      <p className="mt-1 mb-6 text-sm text-muted-foreground max-w-prose">
         The headshot shown in the hero of the public profile page. JPEG, PNG, or
         WebP, up to 5&nbsp;MB. A square image works best — it is cropped to a
         circle. With no photo set, the page falls back to an initials ring.

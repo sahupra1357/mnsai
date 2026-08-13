@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     request.headers.get("x-forwarded-proto") === "https" ||
     request.nextUrl.protocol === "https:"
 
-  const response = NextResponse.redirect(new URL("/dashboard", request.url))
+  const response = NextResponse.redirect(new URL("/", request.url))
   response.cookies.set("access_token", token, {
     httpOnly: true,
     sameSite: "lax",

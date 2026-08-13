@@ -11,10 +11,17 @@ import {
 import { Button } from "@/components/ui/button"
 import useAuth from "@/hooks/use-auth"
 
-const UserMenu = () => {
+interface UserMenuProps {
+  /** Hide the signed-out Sign In / Sign Up buttons (pages that don't sell an account). */
+  hideSignedOutActions?: boolean
+}
+
+const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
   const { logout, user } = useAuth()
 
   if (!user) {
+    if (hideSignedOutActions) return null
+
     return (
       <div className="flex items-center gap-2">
         <Button

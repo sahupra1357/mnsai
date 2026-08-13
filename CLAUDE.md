@@ -13,12 +13,13 @@ docker compose up -d                  # backend + db (FastAPI on :8000)
 - **Backend**: FastAPI + SQLModel, routes in `backend/app/api/routes/`, registered in `backend/app/api/main.py`. Config via `backend/app/core/config.py` (`settings`). OpenAI SDK is the LLM provider (`settings.OPENAI_DEPLOYMENT_ID`, default `gpt-4o`).
 - **Auth**: HttpOnly cookie JWT via Next.js proxy routes (`app/api/auth/*`). Protected pages guarded by `middleware.ts`. Never put tokens in localStorage.
 - **API calls from browser**: through the generated OpenAPI client (`frontend/src/client/`, DO NOT delete/hand-edit) or through Next.js API proxy routes when a cookie/secret must stay server-side.
-- **Styling**: use existing shadcn components in `components/ui/`; brand palette is **"Teal & warm paper"** (light: warm cream paper + deep teal accent; dark: blue-slate + bright aqua; `ui-main` utility + shadcn `--primary` tokens carry the teal family — defined in `app/globals.css`). Match the visual language of `app/page.tsx`.
+- **Styling**: use existing shadcn components in `components/ui/`; brand palette is **"Teal & warm paper"** (light: warm cream paper + deep teal accent; dark: blue-slate + bright aqua; `ui-main` utility + shadcn `--primary` tokens carry the teal family — defined in `app/globals.css`). Match the visual language of `app/profile/page.tsx`.
 - **Ports**: frontend 3000, backend 8000. CORS: `FRONTEND_HOST=http://localhost:3000`.
+- **Routes**: `/` is the workspace dashboard (`app/page.tsx`) and is **public** — it renders for signed-out visitors; the tools it links to are the protected part. `/dashboard` still resolves — it redirects to `/`. The profile/portfolio page is `/profile` (`app/profile/page.tsx`, also public).
 
 ## Active initiative: Profile page + AI chat agent
 
-Goal: replace the homepage (`frontend/app/page.tsx`) into a professional profile/portfolio page for Pradeep Sahu that showcases skills and services so prospective users/customers can engage him for projects. The page embeds a chat box answered by an AI agent grounded in profile documents (resume, project write-ups, service descriptions).
+Goal: `frontend/app/profile/page.tsx` (routed at `/profile`, public — no login) is a professional profile/portfolio page for Pradeep Sahu that showcases skills and services so prospective users/customers can engage him for projects. The page embeds a chat box answered by an AI agent grounded in profile documents (resume, project write-ups, service descriptions).
 
 Project skills define how to build this — **load them before working on the feature**:
 - `.claude/skills/profile-page/SKILL.md` — page layout, sections, components, design rules.

@@ -169,7 +169,7 @@ export default function ApiKeys() {
   const revokedKeys = keys.filter((key) => key.revoked_at)
 
   return (
-    <div className="max-w-4xl space-y-6 py-4">
+    <div className="max-w-4xl space-y-6">
       <div>
         <h3 className="text-sm font-semibold">Document extraction API keys</h3>
         <p className="mt-1 text-sm text-muted-foreground">

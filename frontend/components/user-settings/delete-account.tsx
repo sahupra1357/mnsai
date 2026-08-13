@@ -9,8 +9,8 @@ const DeleteAccount = () => {
 
   return (
     <div className="max-w-full">
-      <h3 className="text-sm font-semibold py-4">Delete Account</h3>
-      <p className="text-sm text-muted-foreground">
+      <h3 className="text-sm font-semibold">Delete Account</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
         Permanently delete your data and everything associated with your account.
       </p>
       <Button

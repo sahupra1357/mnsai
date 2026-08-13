@@ -51,10 +51,10 @@ test("Log in with valid email and password ", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/dashboard")
+  await page.waitForURL("/")
 
   await expect(
-    page.getByText("Welcome to the Home page of mnsAI"),
+    page.getByText(/Welcome back/),
   ).toBeVisible()
 })
 
@@ -85,10 +85,10 @@ test("Successful log out", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/dashboard")
+  await page.waitForURL("/")
 
   await expect(
-    page.getByText("Welcome to the Home page of mnsAI"),
+    page.getByText(/Welcome back/),
   ).toBeVisible()
 
   await page.getByTestId("user-menu").click()
@@ -102,10 +102,10 @@ test("Logged-out user cannot access protected routes", async ({ page }) => {
   await fillForm(page, firstSuperuser, firstSuperuserPassword)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await page.waitForURL("/dashboard")
+  await page.waitForURL("/")
 
   await expect(
-    page.getByText("Welcome to the Home page of mnsAI"),
+    page.getByText(/Welcome back/),
   ).toBeVisible()
 
   await page.getByTestId("user-menu").click()

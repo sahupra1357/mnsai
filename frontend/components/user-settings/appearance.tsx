@@ -9,8 +9,8 @@ const Appearance = () => {
 
   return (
     <div className="max-w-full">
-      <h3 className="text-sm font-semibold py-4">Appearance</h3>
-      <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold">Appearance</h3>
+      <div className="mt-4 flex flex-col gap-3">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="radio"

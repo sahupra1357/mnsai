@@ -39,10 +39,13 @@ export default function SettingsPage() {
   )
 
   return (
-    <div className="container mx-auto max-w-full">
-      <h1 className="text-2xl font-semibold py-12 text-center md:text-left">
-        User Settings
-      </h1>
+    <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <header className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight">User Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your account details, security, and preferences.
+        </p>
+      </header>
       {/* Keyed by title, not index, so the selected tab survives the list
           changing when the current user resolves. */}
       <Tabs defaultValue={tabsConfig[0].title}>
@@ -56,7 +59,11 @@ export default function SettingsPage() {
         {finalTabs.map((tab) => {
           const Component = tab.component
           return (
-            <TabsContent key={tab.title} value={tab.title}>
+            <TabsContent
+              key={tab.title}
+              value={tab.title}
+              className="mt-6 rounded-lg border border-border bg-card p-6"
+            >
               <Component />
             </TabsContent>
           )

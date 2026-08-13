@@ -12,12 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import UserMenu from "./user-menu"
+import useAuth from "@/hooks/use-auth"
 
 interface NavItem {
   label: string
   subLabel?: string
   children?: Array<NavItem>
   href?: string
+  /** Rendered only for superusers. */
+  superuserOnly?: boolean
 }
 
 const NAV_ITEMS: Array<NavItem> = [
@@ -27,23 +30,14 @@ const NAV_ITEMS: Array<NavItem> = [
       {
         label: "Dashboard",
         subLabel: "Trending Design to inspire you",
-        href: "/dashboard",
-      },
-      {
-        label: "Items",
-        subLabel: "Up-and-coming Designers",
-        href: "/items",
+        href: "/",
       },
     ],
   },
   {
     label: "Solutions",
     children: [
-      {
-        label: "User Settings",
-        subLabel: "Find your dream design job",
-        href: "/settings",
-      },
+      // Settings is reached through the user menu ("My profile"), not here.
       {
         label: "Data Extraction",
         subLabel: "Review OCR results with confidence and parser provenance",
@@ -70,19 +64,34 @@ const NAV_ITEMS: Array<NavItem> = [
         href: "/resources/blog",
       },
       {
+        label: "Profile",
+        subLabel: "Pradeep's portfolio, experience, and AI chat",
+        href: "/profile",
+        superuserOnly: true,
+      },
+      {
+        label: "Items",
+        subLabel: "Up-and-coming Designers",
+        href: "/items",
+        superuserOnly: true,
+      },
+      {
         label: "Legacy GPT Extractor",
         subLabel: "Original GPT-based extraction demo",
         href: "/extractor",
+        superuserOnly: true,
       },
       {
         label: "Profile v1 (1st draft)",
         subLabel: "Archived first draft of the profile page",
         href: "/drafts/profile-v1",
+        superuserOnly: true,
       },
       {
         label: "Profile V2",
         subLabel: "Archived second draft of the profile page",
         href: "/drafts/profile-v2",
+        superuserOnly: true,
       },
     ],
   },
@@ -92,10 +101,36 @@ const NAV_ITEMS: Array<NavItem> = [
   },
 ]
 
-export default function WithSubnavigation() {
+interface WithSubnavigationProps {
+  /** Drop the Sign In / Sign Up buttons for signed-out visitors (used by /profile). */
+  hideSignedOutAuth?: boolean
+}
+
+export default function WithSubnavigation({
+  hideSignedOutAuth = false,
+}: WithSubnavigationProps = {}) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  // Logo always returns to the public profile/portfolio homepage.
+  const { user } = useAuth()
+  // The dashboard at "/" is public, so the logo always returns there.
   const logoHref = "/"
+
+  // Superuser-only entries disappear for everyone else, and a group left with
+  // no visible children drops out rather than rendering an empty dropdown.
+  const isSuperuser = Boolean(user?.is_superuser)
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.superuserOnly || isSuperuser,
+  )
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter(
+              (child) => !child.superuserOnly || isSuperuser,
+            ),
+          }
+        : item,
+    )
+    .filter((item) => !item.children || item.children.length > 0)
 
   return (
     <nav className="border-b border-border bg-background">
@@ -127,7 +162,7 @@ export default function WithSubnavigation() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex ml-10 w-full items-center justify-center gap-4">
-            {NAV_ITEMS.map((navItem) =>
+            {navItems.map((navItem) =>
               navItem.children ? (
                 <DropdownMenu key={navItem.label}>
                   <DropdownMenuTrigger asChild>
@@ -166,14 +201,14 @@ export default function WithSubnavigation() {
 
         {/* Auth buttons */}
         <div className="flex items-center gap-2">
-          <UserMenu />
+          <UserMenu hideSignedOutActions={hideSignedOutAuth} />
         </div>
       </div>
 
       {/* Mobile nav */}
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background px-4 py-2">
-          {NAV_ITEMS.map((navItem) => (
+          {navItems.map((navItem) => (
             <div key={navItem.label} className="py-1">
               {navItem.children ? (
                 <>
