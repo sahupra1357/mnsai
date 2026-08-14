@@ -44,6 +44,11 @@ const NAV_ITEMS: Array<NavItem> = [
         href: "/document-extractions",
       },
       {
+        label: "Contract Review",
+        subLabel: "AI review of contracts for risks, clauses, and obligations",
+        href: "/solutions/contract-review",
+      },
+      {
         label: "Course Search",
         subLabel: "Find the best courses near you",
         href: "/solutions/course-search",

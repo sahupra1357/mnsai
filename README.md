@@ -391,7 +391,7 @@ Local services:
 | Backend API | `http://localhost:8000` |
 | OpenAPI / Swagger | `http://localhost:8000/docs` |
 | Health check | `http://localhost:8000/api/v1/utils/health-check/` |
-| Local PostgreSQL from host | `localhost:5433` |
+| Local PostgreSQL from host | `localhost:5434` |
 
 Every backend container start executes `backend/scripts/prestart.sh`:
 

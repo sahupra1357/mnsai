@@ -1,24 +1,34 @@
 import type { Metadata } from "next"
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 import { Providers } from "./providers"
 
-const inter = Inter({
-  subsets: ["latin"],
+// Fonts are self-hosted from ./fonts rather than pulled via `next/font/google`.
+// The Google loader fetches the .woff2 files from fonts.gstatic.com during
+// `next build`, so a CDN hiccup (Google rotating the hashed filenames while the
+// CSS API still advertises the old ones) fails the whole build — which is what
+// broke the Docker image. These are the latin-subset variable files; to refresh
+// one, re-download it from the css2 API and drop it in place.
+const inter = localFont({
+  src: "./fonts/inter-latin-var.woff2",
+  weight: "100 900",
+  style: "normal",
   variable: "--font-inter",
   display: "swap",
 })
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+const spaceGrotesk = localFont({
+  src: "./fonts/space-grotesk-latin-var.woff2",
+  weight: "300 700",
+  style: "normal",
   variable: "--font-space-grotesk",
   display: "swap",
 })
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const jetbrainsMono = localFont({
+  src: "./fonts/jetbrains-mono-latin-var.woff2",
+  weight: "100 800",
+  style: "normal",
   variable: "--font-jetbrains-mono",
   display: "swap",
 })

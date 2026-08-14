@@ -7,6 +7,7 @@ import WithSubnavigation from "@/components/common/with-subnavigation"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   FileText,
+  FileSignature,
   GraduationCap,
   ClipboardCheck,
   ArrowRight,
@@ -19,6 +20,13 @@ const solutions = [
     description: "Extract structured data from PDFs, invoices, and scanned documents using AI.",
     href: "/document-extractions",
     color: "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
+  },
+  {
+    icon: FileSignature,
+    title: "Contract Review",
+    description: "Review contracts with AI to surface risky clauses, obligations, and key terms.",
+    href: "/solutions/contract-review",
+    color: "bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white",
   },
   {
     icon: GraduationCap,
@@ -76,7 +84,7 @@ export default function DashboardPage() {
           <p className="mt-2 text-muted-foreground">
             {user
               ? "Here's your mnsAI workspace. Pick a tool and get started."
-              : "AI tools for documents, courses, and resumes. Sign in to start using them."}
+              : "AI tools for documents, contracts, courses, and resumes. Sign in to start using them."}
           </p>
         </div>
       </div>

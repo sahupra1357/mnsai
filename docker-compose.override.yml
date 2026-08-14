@@ -50,9 +50,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD?Variable not set}
       POSTGRES_DB: ${POSTGRES_DB?Variable not set}
     ports:
-      # Host 5432 is often taken by a local Postgres; publish on 5433.
-      # The backend still reaches it internally as db:5432 over the compose network.
-      - "5433:5432"
+      # Host 5432 is often taken by a local Postgres, and 5433 by the contract
+      # review stack's Postgres; publish on 5434. The backend still reaches it
+      # internally as db:5432 over the compose network.
+      - "5434:5432"
     volumes:
       - app-db-data:/var/lib/postgresql/data
     healthcheck:
