@@ -30,8 +30,9 @@ const solutions = [
   },
   {
     icon: GraduationCap,
-    title: "Course Search",
-    description: "Find and compare courses near you by category, mode, level, and price.",
+    title: "Career Explorer Empowered by AI",
+    description:
+      "Compare fields of study, then find the colleges that teach the course you want — every fact sourced.",
     href: "/solutions/course-search",
     color: "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
   },

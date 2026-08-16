@@ -310,11 +310,11 @@ export const projects: Project[] = [
   },
   {
     icon: Search,
-    title: "Course Search",
+    title: "Career Explorer Empowered by AI",
     status: "Live demo",
     description:
-      "AI-assisted course search — filter by category, mode, level, price, and college rating.",
-    chips: ["Next.js", "FastAPI"],
+      "Decision support for students picking a career path — chat your way to a shortlist of fields, then search a course and get the colleges that offer it, ranked by distance with a citation on every figure.",
+    chips: ["React", "FastAPI", "pgvector"],
     href: "/solutions/course-search",
     ctaLabel: "Open demo",
   },

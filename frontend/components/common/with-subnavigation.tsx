@@ -49,8 +49,8 @@ const NAV_ITEMS: Array<NavItem> = [
         href: "/solutions/contract-review",
       },
       {
-        label: "Course Search",
-        subLabel: "Find the best courses near you",
+        label: "Career Explorer Empowered by AI",
+        subLabel: "Evidence-backed research on any field and the colleges that teach it",
         href: "/solutions/course-search",
       },
       {
