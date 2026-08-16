@@ -15,7 +15,7 @@ const plans = [
     highlight: false,
     features: [
       "Up to 70 document extractions/month",
-      "Course Search access",
+      "Career Explorer access",
       "ATS Resume Matcher access",
       "JSON & Markdown output",
       "Email support",

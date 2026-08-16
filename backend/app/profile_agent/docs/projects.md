@@ -8,8 +8,11 @@ would use to build yours.
 - **Data Extraction** — a document-intelligence demo that turns messy PDFs,
   invoices, receipts, and scanned forms into clean structured data, instantly and
   at scale. Built with FastAPI + OpenAI.
-- **Course Search** — an AI-assisted course search that filters by category, mode,
-  level, price, and college rating. Built with Next.js + FastAPI.
+- **Career Explorer Empowered by AI** — a decision-support tool for students choosing
+  a career path in any field: chat your way to a shortlist, then search a course and get
+  the colleges that offer it, grouped into expanding geographic rings with a source
+  and an as-of date on every figure — nothing shown is invented. Built with React +
+  FastAPI + pgvector.
 - **ATS Resume Matcher** — matches a resume to any job description and returns an
   ATS compatibility score with actionable feedback. Built with FastAPI + OpenAI.
 
