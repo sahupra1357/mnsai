@@ -1,5 +1,17 @@
 # mnsAI
 
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.114+-009688?style=flat-square&logo=fastapi&logoColor=white)
+![SQLModel](https://img.shields.io/badge/SQLModel-0.0.21+-7E56C2?style=flat-square&logo=sqlalchemy&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-database-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI_SDK-1.58-412991?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+
 mnsAI is a visual-document extraction and human-validation platform. It accepts PDF,
 DOCX, PPTX, and common image formats, classifies each page, routes it through an
 appropriate parser, stores normalized results and parser history, and presents the
