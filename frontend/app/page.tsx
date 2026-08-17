@@ -1,135 +1,90 @@
-"use client"
-
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import useAuth from "@/hooks/use-auth"
 import WithSubnavigation from "@/components/common/with-subnavigation"
-import { Card, CardContent } from "@/components/ui/card"
+import { AaLeaderboard } from "@/components/dashboard/aa-leaderboard"
+import { Greeting } from "@/components/dashboard/greeting"
 import {
-  FileText,
-  FileSignature,
-  GraduationCap,
-  ClipboardCheck,
-  ArrowRight,
-} from "lucide-react"
-
-const solutions = [
-  {
-    icon: FileText,
-    title: "Data Extraction",
-    description: "Extract structured data from PDFs, invoices, and scanned documents using AI.",
-    href: "/document-extractions",
-    color: "bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
-  },
-  {
-    icon: FileSignature,
-    title: "Contract Review",
-    description: "Review contracts with AI to surface risky clauses, obligations, and key terms.",
-    href: "/solutions/contract-review",
-    color: "bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white",
-  },
-  {
-    icon: GraduationCap,
-    title: "Career Explorer Empowered by AI",
-    description:
-      "Compare fields of study, then find the colleges that teach the course you want — every fact sourced.",
-    href: "/solutions/course-search",
-    color: "bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "ATS Resume Matcher",
-    description: "Match your resume against job descriptions and get an ATS compatibility score.",
-    href: "/solutions/ats-resume-matcher",
-    color: "bg-violet-500/10 text-violet-600 group-hover:bg-violet-500 group-hover:text-white",
-  },
-]
+  FreshPapers,
+  ModelWatch,
+  OpenRouterWatch,
+  TheWireList,
+} from "@/components/dashboard/pulse-rail"
+import { ToolsGrid } from "@/components/dashboard/tools-grid"
+import { WireTicker } from "@/components/dashboard/wire-ticker"
+import { getTrendingModels } from "@/lib/ai-pulse/models"
+import { getWireItems } from "@/lib/ai-pulse/news"
+import { getNewOpenRouterModels } from "@/lib/ai-pulse/openrouter"
+import { getLatestPapers } from "@/lib/ai-pulse/papers"
 
 /**
- * "/" is the workspace dashboard and is public — signed-out visitors see the
- * same tool list, and the tools themselves are what require a session. It lives
- * outside the (protected) route group, so it renders the navbar itself. The
- * profile/portfolio page is at /profile.
+ * "/" is the workspace dashboard and is public — an "AI operations desk":
+ * the AI Pulse layer (wire ticker + model watch + fresh papers) shows what's
+ * moving in AI right now, and the tools grid below is the act-on-it layer.
+ * Server component with ISR (30 min) so external sources are hit a couple of
+ * times per hour total, never per visitor; the auth greeting is a client
+ * island. Signed-out visitors see the same page — the tools themselves are
+ * what require a session. The profile/portfolio page is at /profile.
  */
-export default function DashboardPage() {
-  const { user, isLoading } = useAuth()
-  const [greeting, setGreeting] = useState("")
+export const revalidate = 1800
 
-  useEffect(() => {
-    const h = new Date().getHours()
-    if (h < 12) setGreeting("Good morning")
-    else if (h < 17) setGreeting("Good afternoon")
-    else setGreeting("Good evening")
-  }, [])
-
-  const name = user?.full_name?.split(" ")[0] || user?.email?.split("@")[0]
+export default async function DashboardPage() {
+  const [models, papers, wire, orModels] = await Promise.all([
+    getTrendingModels(),
+    getLatestPapers(),
+    getWireItems(),
+    getNewOpenRouterModels(),
+  ])
+  const hasRail =
+    models.length > 0 ||
+    papers.length > 0 ||
+    wire.length > 0 ||
+    orModels.length > 0
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <WithSubnavigation />
 
-      {/* Welcome banner. Auth resolves client-side, so hold the heading's space
-          while it loads rather than flashing the signed-out copy. */}
+      <WireTicker items={wire} />
+
       <div className="border-b bg-muted/30">
         <div className="mx-auto max-w-6xl px-6 py-10">
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest mb-1">
-            {greeting}
-          </p>
-          {isLoading ? (
-            <div className="h-9 w-72 max-w-full animate-pulse rounded bg-muted" />
-          ) : (
-            <h1 className="text-3xl font-bold text-foreground">
-              {user ? `Welcome back, ${name}` : "Welcome to mnsAI"}
-            </h1>
-          )}
-          <p className="mt-2 text-muted-foreground">
-            {user
-              ? "Here's your mnsAI workspace. Pick a tool and get started."
-              : "AI tools for documents, contracts, courses, and resumes. Sign in to start using them."}
-          </p>
+          <Greeting />
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-10 space-y-10">
-
-        {/* Solutions */}
-        <section>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Solutions</h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {solutions.map(({ icon: Icon, title, description, href, color }) => (
-              <Link key={title} href={href} className="group">
-                <Card className="h-full hover:shadow-md transition-all duration-200 border border-border hover:border-ui-main/30">
-                  <CardContent className="pt-6 pb-6 flex flex-col gap-3 h-full">
-                    <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-200 ${color}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-foreground">{title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-                      {description}
-                    </p>
-                    <span className="inline-flex items-center text-xs font-semibold text-ui-main group-hover:underline mt-1">
-                      Open <ArrowRight className="ml-1 h-3 w-3" />
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+        <div className="flex flex-col gap-12 lg:flex-row lg:gap-10">
+          {/* Sticky so the tools desk stays in view while the longer Pulse
+              rail scrolls past it on desktop. */}
+          <div className="min-w-0 flex-1 lg:sticky lg:top-8 lg:self-start">
+            <ToolsGrid />
           </div>
-        </section>
 
-        {/* Coming soon */}
-        <section>
-          <Card className="border-dashed border-border bg-muted/20">
-            <CardContent className="py-8 flex flex-col items-center text-center gap-2">
-              <p className="text-sm font-medium text-foreground">More solutions coming soon</p>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                We&apos;re continuously adding new AI tools to the platform. Check back regularly for updates.
-              </p>
-            </CardContent>
-          </Card>
-        </section>
+          {hasRail && (
+            <aside
+              className="w-full shrink-0 space-y-10 lg:w-[340px]"
+              aria-label="AI Pulse — live AI intelligence"
+            >
+              <ModelWatch models={models} />
+              <OpenRouterWatch models={orModels} />
+              <FreshPapers papers={papers} />
+              <TheWireList items={wire} />
+            </aside>
+          )}
+        </div>
 
-      </div>
+        {/* Full-width benchmarks section — the embedded Space needs the whole
+            content width, so it sits below the tools + rail columns. */}
+        <div className="mt-16">
+          <AaLeaderboard />
+        </div>
+      </main>
+
+      <footer className="border-t border-border px-6 py-6">
+        <p className="mx-auto max-w-6xl text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          Live data: Hugging Face · OpenRouter · Artificial Analysis · arXiv.org
+          (thank you to arXiv for use of its open-access interoperability) ·
+          Hacker News · vendor blogs — headlines link to their original sources
+        </p>
+      </footer>
     </div>
   )
 }
