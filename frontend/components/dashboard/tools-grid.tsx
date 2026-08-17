@@ -15,11 +15,11 @@ import Link from "next/link"
  * match /profile's visual language.
  */
 
-/** Every tool lives in this repo, so `source` is a path within it rather than
- *  a separate repo URL. Parens are percent-encoded because the App Router
- *  route group `(protected)` is part of each path. */
-const REPO = "https://github.com/sahupra1357/mnsai/tree/main"
-const APP = "frontend/app/%28protected%29"
+/** Each tool has its own repo; `source` points at the repo root so GitHub
+ *  renders that project's README. Note that ContractReviewSystem is currently
+ *  a private repo, so its link 404s for visitors without access — this page is
+ *  public, so making that repo public is what makes the link useful. */
+const GH = "https://github.com/sahupra1357"
 
 const solutions = [
   {
@@ -28,7 +28,7 @@ const solutions = [
     description:
       "Extract structured data from PDFs, invoices, and scanned documents using AI.",
     href: "/document-extractions",
-    source: `${REPO}/${APP}/document-extractions`,
+    source: `${GH}/mnsai`,
   },
   {
     icon: FileSignature,
@@ -36,7 +36,7 @@ const solutions = [
     description:
       "Review contracts with AI to surface risky clauses, obligations, and key terms.",
     href: "/solutions/contract-review",
-    source: `${REPO}/${APP}/solutions/contract-review`,
+    source: `${GH}/ContractReviewSystem`,
   },
   {
     icon: GraduationCap,
@@ -44,7 +44,7 @@ const solutions = [
     description:
       "Compare fields of study, then find the colleges that teach the course you want — every fact sourced.",
     href: "/solutions/course-search",
-    source: `${REPO}/${APP}/solutions/course-search`,
+    source: `${GH}/ai-career-explorer`,
   },
   {
     icon: ClipboardCheck,
@@ -52,7 +52,7 @@ const solutions = [
     description:
       "Match your resume against job descriptions and get an ATS compatibility score.",
     href: "/solutions/ats-resume-matcher",
-    source: `${REPO}/${APP}/solutions/ats-resume-matcher`,
+    source: `${GH}/AIResumeMatcher`,
   },
 ]
 
