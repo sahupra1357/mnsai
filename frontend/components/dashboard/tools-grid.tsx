@@ -16,9 +16,9 @@ import Link from "next/link"
  */
 
 /** Each tool has its own repo; `source` points at the repo root so GitHub
- *  renders that project's README. Note that ContractReviewSystem is currently
- *  a private repo, so its link 404s for visitors without access — this page is
- *  public, so making that repo public is what makes the link useful. */
+ *  renders that project's README. All four repos must stay public — this is a
+ *  public page, and GitHub serves private repos as a bare 404, so a link to
+ *  one reads as broken rather than restricted. */
 const GH = "https://github.com/sahupra1357"
 
 const solutions = [
