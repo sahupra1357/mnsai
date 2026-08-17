@@ -82,4 +82,44 @@
     -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
     mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
   }
+
+  /* ── Instrument material ────────────────────────────────────────────────
+     A deep slate-teal slab used for the dashboard's live-data surfaces (the
+     wire ticker and the AI Pulse band). The page's own workspace stays warm
+     paper; readings from the outside world sit on this darker material, so
+     the two are legible as different kinds of content at a glance.
+
+     Self-contained by design: these are new class names only, identical in
+     light and dark themes, so the slab reads as one consistent instrument
+     and no existing page's styling changes. */
+  .instrument {
+    --inst-bg: 197 44% 8%;
+    --inst-surface: 197 36% 12%;
+    --inst-line: 197 26% 21%;
+    --inst-text: 190 22% 93%;
+    --inst-dim: 195 13% 63%;
+    --inst-accent: 184 74% 56%;
+    /* Amber is the one warm note on the page: a signal lamp, nothing else. */
+    --inst-live: 38 92% 62%;
+    background-color: hsl(var(--inst-bg));
+    color: hsl(var(--inst-text));
+  }
+  .inst-surface {
+    background-color: hsl(var(--inst-surface));
+  }
+  .inst-accent {
+    color: hsl(var(--inst-accent));
+  }
+  .inst-dim {
+    color: hsl(var(--inst-dim));
+  }
+  .inst-rule {
+    border-color: hsl(var(--inst-line));
+  }
+  .inst-bar {
+    background-color: hsl(var(--inst-accent));
+  }
+  .inst-live-dot {
+    background-color: hsl(var(--inst-live));
+  }
 }

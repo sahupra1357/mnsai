@@ -49,7 +49,9 @@ export async function getNewOpenRouterModels(): Promise<OpenRouterModel[]> {
           !m.id!.includes(":"),
       )
       .sort((a, b) => b.created - a.created)
-      .slice(0, 5)
+      // Eight: these rows are more compact than the trending/paper rows, so
+      // it takes a couple more to fill the middle column to the same depth.
+      .slice(0, 8)
       .map((m) => ({
         id: m.id,
         // API names read "Org: Model" — the org gets its own line in the UI.

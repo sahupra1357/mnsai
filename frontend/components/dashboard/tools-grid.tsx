@@ -47,26 +47,32 @@ const solutions = [
 export function ToolsGrid() {
   return (
     <section aria-label="mnsAI tools">
-      <div className="mb-4 flex items-center gap-2 border-b border-border pb-2">
-        <span className="h-2 w-2 rounded-[1px] bg-ui-main" aria-hidden="true" />
-        <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
-          Your Tools
+      <div className="mb-6 flex items-baseline justify-between gap-4 border-b border-border pb-3">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          Your tools
         </h2>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          {solutions.length} available
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {/* Four across on wide screens: the set reads as one row of instruments
+          rather than a 2x2 block with a short column beside it. */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {solutions.map(({ icon: Icon, title, description, href }) => (
           <Link key={title} href={href} className="group">
-            <Card className="h-full border border-border transition-all duration-200 hover:border-ui-main/40 hover:shadow-md">
-              <CardContent className="flex h-full flex-col gap-3 pb-6 pt-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-ui-main/10 text-ui-accent transition-colors duration-200 group-hover:bg-ui-main group-hover:text-white">
-                  <Icon className="h-5 w-5" />
+            <Card className="h-full border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-ui-main/40 hover:shadow-md">
+              <CardContent className="flex h-full flex-col gap-3 p-5">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-ui-main/10 text-ui-accent transition-colors duration-200 group-hover:bg-ui-main group-hover:text-white">
+                  <Icon className="h-[18px] w-[18px]" />
                 </div>
-                <h3 className="font-semibold text-foreground">{title}</h3>
-                <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
+                <h3 className="text-[15px] font-semibold leading-snug text-foreground">
+                  {title}
+                </h3>
+                <p className="flex-1 text-[13px] leading-relaxed text-muted-foreground">
                   {description}
                 </p>
-                <span className="mt-1 inline-flex items-center text-xs font-semibold text-ui-accent group-hover:underline">
+                <span className="inline-flex items-center text-xs font-semibold text-ui-accent group-hover:underline">
                   Open <ArrowRight className="ml-1 h-3 w-3" />
                 </span>
               </CardContent>
@@ -74,10 +80,6 @@ export function ToolsGrid() {
           </Link>
         ))}
       </div>
-
-      <p className="mt-5 border border-dashed border-border bg-muted/20 px-4 py-3 text-center font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        More tools in progress
-      </p>
     </section>
   )
 }

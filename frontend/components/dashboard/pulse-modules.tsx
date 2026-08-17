@@ -2,13 +2,13 @@ import type { OpenRouterModel } from "@/lib/ai-pulse/openrouter"
 import type { Paper, TrendingModel, WireItem } from "@/lib/ai-pulse/types"
 
 /**
- * AI Pulse rail — Model Watch, Fresh Papers, and The Wire as quiet
- * typographic modules. Everything is text + links in the brand teal;
- * no thumbnails, no reproduced body content. Each module renders nothing
- * when its source returned no data.
+ * AI Pulse modules — the readings shown on the instrument band. Everything is
+ * text and links in mono/aqua on the dark slab; no thumbnails, no reproduced
+ * body content. Each module renders nothing when its source returned no data,
+ * so an outage quietly removes a column instead of showing an error.
  */
 
-function RailHeading({
+function ModuleHeading({
   title,
   source,
   sourceHref,
@@ -19,22 +19,21 @@ function RailHeading({
   sourceHref?: string
 }) {
   return (
-    <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-border pb-2">
-      <h2 className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
-        <span className="h-2 w-2 rounded-[1px] bg-ui-main" aria-hidden="true" />
+    <div className="mb-5 flex items-baseline justify-between gap-3 border-b pb-2.5 inst-rule">
+      <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em]">
         {title}
-      </h2>
+      </h3>
       {sourceHref ? (
         <a
           href={sourceHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[10px] uppercase tracking-wider text-ui-accent hover:underline"
+          className="font-mono text-[10px] uppercase tracking-wider inst-accent hover:underline"
         >
           {source} ↗
         </a>
       ) : (
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <span className="font-mono text-[10px] uppercase tracking-wider inst-dim">
           {source}
         </span>
       )}
@@ -61,8 +60,8 @@ export function ModelWatch({ models }: { models: TrendingModel[] }) {
 
   return (
     <section aria-label="Trending AI models">
-      <RailHeading title="Model Watch" source="Hugging Face" />
-      <ol className="space-y-3">
+      <ModuleHeading title="Model Watch" source="Hugging Face" />
+      <ol className="space-y-3.5">
         {models.map((m, i) => (
           <li key={m.id}>
             <a
@@ -71,27 +70,28 @@ export function ModelWatch({ models }: { models: TrendingModel[] }) {
               rel="noopener noreferrer"
               className="group block"
             >
-              <div className="flex items-baseline gap-2">
-                <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+              <div className="flex items-baseline gap-2.5">
+                <span className="w-4 shrink-0 font-mono text-[10px] tabular-nums inst-dim">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground group-hover:text-ui-accent group-hover:underline">
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:underline">
                   {m.name}
                 </span>
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {formatCount(m.downloads)} ↓
+                {/* Downloads carry the scale contrast in this module — the one
+                    number worth reading from across the room. */}
+                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums inst-accent">
+                  {formatCount(m.downloads)}
                 </span>
               </div>
-              <div className="ml-7 mt-1 flex items-center gap-2">
-                {/* Teal ramp: bar length = downloads relative to the leader */}
+              <div className="ml-6 mt-1.5 flex items-center gap-2">
                 <div
-                  className="h-1 rounded-full bg-ui-main/70 transition-colors group-hover:bg-ui-main"
+                  className="inst-bar h-[3px] rounded-full opacity-50 transition-opacity group-hover:opacity-100"
                   style={{
                     width: `${Math.max((m.downloads / max) * 100, 4)}%`,
                   }}
                   aria-hidden="true"
                 />
-                <span className="truncate font-mono text-[10px] text-muted-foreground">
+                <span className="truncate font-mono text-[10px] inst-dim">
                   {m.org}
                 </span>
               </div>
@@ -124,12 +124,12 @@ export function OpenRouterWatch({ models }: { models: OpenRouterModel[] }) {
       {/* Usage rankings can't be embedded (frame-ancestors 'self') and their
           data endpoint is undocumented — so we show the documented catalog's
           newest launches and link out to the leaderboard itself. */}
-      <RailHeading
+      <ModuleHeading
         title="New on OpenRouter"
         source="weekly rankings"
         sourceHref="https://openrouter.ai/rankings"
       />
-      <ul className="space-y-3">
+      <ul className="space-y-3.5">
         {models.map((m) => (
           <li key={m.id}>
             <a
@@ -138,15 +138,15 @@ export function OpenRouterWatch({ models }: { models: OpenRouterModel[] }) {
               rel="noopener noreferrer"
               className="group block"
             >
-              <div className="flex items-baseline gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground group-hover:text-ui-accent group-hover:underline">
+              <div className="flex items-baseline gap-2.5">
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:underline">
                   {m.name}
                 </span>
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                <span className="shrink-0 font-mono text-[10px] inst-dim">
                   {formatDate(new Date(m.created * 1000).toISOString())}
                 </span>
               </div>
-              <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+              <div className="mt-1 flex items-center gap-2 font-mono text-[10px] inst-dim">
                 {m.contextLength > 0 && (
                   <span>{formatContext(m.contextLength)}</span>
                 )}
@@ -169,7 +169,7 @@ export function FreshPapers({ papers }: { papers: Paper[] }) {
 
   return (
     <section aria-label="Latest AI research papers">
-      <RailHeading title="Fresh Papers" source="arXiv" />
+      <ModuleHeading title="Fresh Papers" source="arXiv" />
       <ul className="space-y-4">
         {papers.slice(0, 5).map((p) => (
           <li key={p.url}>
@@ -179,18 +179,18 @@ export function FreshPapers({ papers }: { papers: Paper[] }) {
               rel="noopener noreferrer"
               className="group block"
             >
-              <div className="mb-1 flex items-center gap-2">
-                <span className="rounded-sm bg-ui-main/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-ui-accent">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium inst-accent ring-1 ring-inset ring-[hsl(var(--inst-line))]">
                   {p.category}
                 </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
+                <span className="font-mono text-[10px] inst-dim">
                   {formatDate(p.published)}
                 </span>
               </div>
-              <p className="text-sm font-medium leading-snug text-foreground group-hover:text-ui-accent group-hover:underline">
+              <p className="text-[13px] font-medium leading-snug group-hover:underline">
                 {p.title}
               </p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              <p className="mt-1 truncate text-[11px] inst-dim">
                 {p.authors.slice(0, 3).join(", ")}
                 {p.authors.length > 3 ? " et al." : ""}
               </p>
@@ -202,30 +202,40 @@ export function FreshPapers({ papers }: { papers: Paper[] }) {
   )
 }
 
-/** Static, fully accessible list of the same headlines the ticker scrolls. */
-export function TheWireList({ items }: { items: WireItem[] }) {
+/**
+ * The Wire as a readable row across the foot of the band — the ticker above
+ * is for glancing, this is for actually reading. Three across, so it breaks
+ * the vertical rhythm of the three columns above it.
+ */
+export function WireRow({ items }: { items: WireItem[] }) {
   if (items.length === 0) return null
 
   return (
     <section aria-label="Latest AI news headlines">
-      <RailHeading title="The Wire" source="HN · vendor blogs" />
-      <ul className="space-y-2.5">
+      <ModuleHeading title="The Wire" source="HN · vendor blogs" />
+      <ul className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.slice(0, 6).map((item) => (
-          <li key={item.url} className="flex items-baseline gap-2">
-            <span className="text-ui-accent/70" aria-hidden="true">
-              ▸
-            </span>
+          <li key={item.url}>
             <a
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="min-w-0 flex-1 text-sm leading-snug text-foreground hover:text-ui-accent hover:underline"
+              className="group flex items-baseline gap-2.5"
             >
-              {item.title}
+              <span className="inst-accent opacity-60" aria-hidden="true">
+                ▸
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] leading-snug group-hover:underline">
+                  {item.title}
+                </span>
+                <span className="mt-1 block font-mono text-[10px] uppercase tracking-wider inst-dim">
+                  {item.source}
+                  {formatDate(item.publishedAt) &&
+                    ` · ${formatDate(item.publishedAt)}`}
+                </span>
+              </span>
             </a>
-            <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              {formatDate(item.publishedAt) || item.source}
-            </span>
           </li>
         ))}
       </ul>
