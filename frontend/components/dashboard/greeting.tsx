@@ -53,7 +53,7 @@ export function Greeting() {
       <p className="mt-5 text-base leading-relaxed text-muted-foreground">
         {user
           ? "Your workspace, with a live read on what's moving in AI. Pick a tool and get started."
-          : "Four AI tools for documents, contracts, courses, and resumes — alongside a live read on what's moving in AI. Sign in to start using them."}
+          : "Five AI tools for documents, contracts, courses, resumes, and coding-agent logs — alongside a live read on what's moving in AI. Sign in to start using them."}
       </p>
     </div>
   )
