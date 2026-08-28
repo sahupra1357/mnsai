@@ -115,6 +115,8 @@ Changes made after Phase 4, at Pradeep's request:
 
 **⚠️ Modal cannot work locally as configured.** The Modal endpoint is live (401 auth challenge), but `DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL` is an expired `trycloudflare.com` quick tunnel whose DNS no longer resolves — Modal cannot fetch the source back, so dispatch fails and every local extraction falls back to tesseract. Refresh that tunnel URL to exercise Modal locally. On Render it is a real, permanently reachable URL.
 
+**Block-element run-on fixed (2026-08-28, found on Render).** Once extraction went through Modal, a *digital* parser returned a whole labelled block as **one element** — "Governing Law: … \n Payment Terms: … \n Notice Period: …" — and `_after_label` took everything to the end of it, so each field swallowed the clauses after it (`governing_law` came back as the entire rest of the contract). Word-level OCR had hidden the whole class: there was never more than one clause in an element to run into. `_after_label` now stops at the next field's label, matched from the anchored heading forms so only a *labelled* boundary cuts — prose mentioning "termination" survives, "Termination Clause:" ends the value. Covered both for newline-separated and single-line blocks.
+
 **Still open:**
 3. Residual carve-out phrasings outside the `_NEGATION` blacklist (`to the extent that`, `so long as`, `only if`, `apart from`, `with the exception of`, bare `save`) let a truncated excerpt through. Verbatim source text, not an invention; lands as `NEEDS_REVIEW`. Cheap to add those tokens; do not chase exhaustiveness.
 4. `UnresolvedField.detail` is always `None` over the wire — the specific reason text lives only in `warnings`, so the UI's per-row reason shows the bare enum.

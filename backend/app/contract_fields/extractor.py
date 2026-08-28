@@ -254,12 +254,65 @@ def _has_letters(text: str) -> bool:
     return bool(re.search(r"[^\W\d_]", text))
 
 
+#: Any field's label written inline, i.e. followed by a separator. Built from the
+#: anchored heading forms, so a value that merely mentions "termination" is not a
+#: label — only "Termination Clause:" is.
+_NEXT_LABEL_INLINE = re.compile(
+    r"(?:(?<=\s)|(?<=^))(?:"
+    + "|".join(
+        pattern for patterns in _HEADINGS.values() for pattern in patterns if pattern
+    )
+    + r")\s*[:\-—–]",
+    re.I,
+)
+
+#: The same, as a heading occupying its own line.
+_NEXT_LABEL_LINE = re.compile(
+    r"^[ \t]*(?:"
+    + "|".join(
+        pattern for patterns in _HEADINGS.values() for pattern in patterns if pattern
+    )
+    + r")[ \t]*$",
+    re.I | re.MULTILINE,
+)
+
+
+def _cut_at_next_label(tail: str) -> str:
+    """Truncate at the next field's label.
+
+    One element does not mean one clause. A digital parser returns a whole block —
+    "Governing Law: … \n Payment Terms: … \n Notice Period: …" — as a single
+    element, and taking everything after the label made each field swallow every
+    clause that followed it. (Word-level OCR hid this: there was never more than one
+    clause in an element to run into.)
+
+    Only a *labelled* boundary cuts, so prose that happens to contain "termination"
+    survives while "Termination Clause:" ends the value.
+    """
+
+    cuts = [
+        match.start()
+        for match in (_NEXT_LABEL_INLINE.search(tail), _NEXT_LABEL_LINE.search(tail))
+        if match is not None
+    ]
+    if not cuts:
+        return tail
+    cut = min(cuts)
+    # A boundary at position 0 would mean the label was immediately followed by
+    # another label; that leaves no value, which the caller already handles.
+    return tail[:cut] if cut > 0 else tail
+
+
 def _after_label(text: str, label: tuple[int, int]) -> str:
-    """The text following a label span, with a separating colon or dash removed."""
+    """The text following a label span, up to the next label.
+
+    The separating colon or dash is removed; the value stops where the next field's
+    clause begins.
+    """
 
     tail = text[label[1] :]
     tail = re.sub(r"^\s*[:\-—–]\s*", " ", tail)
-    return tail.strip(" \t.;")
+    return _cut_at_next_label(tail).strip(" \t.;")
 
 
 # --------------------------------------------------------------------------- #

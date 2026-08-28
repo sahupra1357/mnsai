@@ -985,3 +985,109 @@ def test_the_customer_value_is_always_a_span_of_its_source(preamble: str) -> Non
 
     assert fields["customer"]
     assert fields["customer"] in preamble
+
+
+# --------------------------------------------------------------------------- #
+# Block elements
+#
+# One element is not one clause. A digital parser (docling on Modal) returns a
+# whole labelled block as a single element, and taking everything after the label
+# made each field swallow the clauses that followed it — `governing_law` came back
+# as "State of Delaware Payment Terms: Net 30 ... Termination Clause: ...".
+#
+# Word-level OCR hid this class entirely: there was never more than one clause in
+# an element to run into. It only appeared once extraction went through Modal.
+# --------------------------------------------------------------------------- #
+
+
+LABELLED_BLOCK = (
+    "Governing Law: State of Delaware\n"
+    "Payment Terms: Net 30 days from invoice date\n"
+    "Notice Period: 90 days' prior written notice\n"
+    "Renewal Terms: Automatic renewal for successive one year terms\n"
+    "Termination Clause: Termination for convenience on written notice"
+)
+
+BLOCK_EXPECTED = {
+    "governing_law": "State of Delaware",
+    "payment_terms": "Net 30 days from invoice date",
+    "notice_period": "90 days' prior written notice",
+    "renewal_terms": "Automatic renewal for successive one year terms",
+    "termination_clause": "Termination for convenience on written notice",
+}
+
+
+@pytest.mark.parametrize("field_key", sorted(BLOCK_EXPECTED))
+@pytest.mark.parametrize("separator", ["\n", " "])
+def test_a_block_element_stops_each_clause_at_the_next_label(
+    field_key: str, separator: str
+) -> None:
+    """Both shapes: clauses split by newlines, and run together on one line."""
+
+    block = LABELLED_BLOCK.replace("\n", separator)
+    fields, status, unresolved, _ = _resolve(
+        [field_key], [HEADING, ("paragraph", block)]
+    )
+
+    assert fields[field_key] == BLOCK_EXPECTED[field_key]
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
+
+
+def test_the_last_clause_in_a_block_is_not_truncated() -> None:
+    """Nothing follows it, so there is no boundary to find."""
+
+    fields, _, _, _ = _resolve(
+        ["termination_clause"], [HEADING, ("paragraph", LABELLED_BLOCK)]
+    )
+
+    assert fields["termination_clause"] == (
+        "Termination for convenience on written notice"
+    )
+
+
+def test_prose_mentioning_a_field_name_is_not_a_boundary() -> None:
+    """Only a *labelled* boundary cuts. A clause that discusses termination must
+    not be truncated at the word."""
+
+    block = (
+        "Renewal Terms: The Agreement renews annually unless termination occurs\n"
+        "Governing Law: State of Delaware"
+    )
+    fields, _, _, _ = _resolve(["renewal_terms"], [HEADING, ("paragraph", block)])
+
+    assert fields["renewal_terms"] == (
+        "The Agreement renews annually unless termination occurs"
+    )
+
+
+def test_a_whole_digital_parse_resolves_every_field() -> None:
+    """End to end on the element shape Modal actually produced in production."""
+
+    lines = [
+        ("heading", "MASTER SERVICES AGREEMENT"),
+        (
+            "paragraph",
+            "This Agreement is made between Acme Corp, Inc. and Northwind Ltd.",
+        ),
+        (
+            "paragraph",
+            "Effective Date: 15 January 2026\n"
+            "Term End Date: 14 January 2027\n"
+            "Total contract value: USD 250,000.00",
+        ),
+        ("paragraph", LABELLED_BLOCK),
+    ]
+    from app.contract_fields.catalogue import CANONICAL_FIELD_KEYS
+
+    fields, status, unresolved, _ = _resolve(list(CANONICAL_FIELD_KEYS), lines)
+
+    assert fields["contract_title"] == "MASTER SERVICES AGREEMENT"
+    assert fields["customer"] == "Northwind Ltd."
+    assert fields["effective_date"] == "15/01/2026"
+    assert fields["term_end_date"] == "14/01/2027"
+    assert fields["contract_value"] == "USD 250000.00"
+    for key, expected in BLOCK_EXPECTED.items():
+        assert fields[key] == expected, key
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
