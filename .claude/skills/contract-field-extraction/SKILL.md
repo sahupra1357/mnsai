@@ -53,7 +53,7 @@ exactly as asked.
 | # | key | meaning | normalization |
 |---|-----|---------|---------------|
 | 1 | `contract_title` | the agreement's title as written | verbatim, trimmed |
-| 2 | `parties` | the contracting parties | **never split or merged** — see below |
+| 2 | `customer` | the counterparty — the organisation the agreement is with | one organisation, verbatim; the home org is never the answer |
 | 3 | `effective_date` | date the contract takes effect | `DD/MM/YYYY` |
 | 4 | `term_end_date` | expiry / end of term | `DD/MM/YYYY` |
 | 5 | `contract_value` | total consideration | `"<CURRENCY> <amount>"`, scale words **expanded** |
@@ -61,15 +61,28 @@ exactly as asked.
 ### Normalization rules confirmed by Pradeep (2026-08-26) — these override any
 ### earlier guidance and any grader feedback to the contrary
 
-**Parties — the normalizer never splits.** Whatever the extractor produced as a party
-value is **one element**, taken as-is. `"Smith and Wesson"` is one party named
-"Smith and Wesson", not two. The normalizer only collapses whitespace; it must never
-split on `and`, `&`, or a comma, and never merge or de-duplicate. Deciding how many
-parties a contract has is the **extractor's** job in Phase 3 (it delimits them from
-the source elements), not the normalizer's. When the extractor yields several parties,
-join them with `"; "` in source order; when it yields one, emit that one unchanged.
-This removes the whole guessing problem from `normalize.py` — there is nothing left
-for it to get wrong.
+**Customer — the counterparty, not "the parties" (revised 2026-08-28).** The field
+records **one** organisation: the side of the contract that is *not* the organisation
+running this deployment. The home organisation's names are configuration —
+`settings.CONTRACT_HOME_ORGANIZATIONS`, a **list** (legal names contain commas, so a
+comma-separated string would shred them), overridable in the environment as JSON.
+
+This is a deliberate simplification. `parties` had to delimit an arbitrary number of
+entities and carry them all through grounding, which put "how many parties are there"
+into the extraction path. One side is known from configuration, so the answer is a
+single name and that ambiguity disappears.
+
+The normalizer still **never splits and never rewrites** — `"Smith and Wesson"` is one
+organisation. It takes a string, or a single-entry list as a courtesy to providers that
+wrap it; **more than one organisation is `""`**, never a joined value or a guess about
+which is the customer. Choosing the counterparty is the extractor's job, by two routes:
+delimit the preamble and keep the one party that is not the home organisation; failing
+that (an unrecognised corporate suffix leaves the preamble unsplit, and that string
+*contains* the home name so it reads as home), locate the configured name and take the
+text on the other side of it. Either route returns a **contiguous span of the source**,
+so the value stays groundable. Home-name matching ignores case, punctuation, and the
+corporate suffix, but never matches inside a longer word — `"Acme Corp"` must not match
+in `"Acme Corporation"`. Ambiguous or all-home preambles yield `""` and a human check.
 
 **Dates — `DD/MM/YYYY`.** Not ISO. `15 January 2026` → `"15/01/2026"`. Input that is
 genuinely ambiguous is still refused: a bare `01/02/2026` cannot be told apart from
@@ -124,7 +137,7 @@ value is a **string**; a field that was not selected, not found, or not groundab
 ```json
 {
   "contract_title": "Master Services Agreement",
-  "parties": "Acme Corp; Northwind Ltd",
+  "customer": "Northwind Ltd",
   "effective_date": "15/01/2026",
   "term_end_date": "",
   "contract_value": "USD 250000.00",
@@ -271,6 +284,16 @@ non-empty subset of the 10 keys — an **empty selection**, an unknown key, or a
 is a 422; no key is privileged; the endpoint stays privilege-free — no shell, no fetching, no
 writes outside its own table.
 
+**Document extraction must go through Modal when it is configured.** Do **not** call
+`DocumentExtractionService.ingest()` directly — that is the *local* router, and in this
+image every primary adapter (docling, paddleocr, mineru, marker) is uninstalled, so it
+silently lands on tesseract and OCRs documents that have a perfect text layer. Use
+`ContractFieldService._ingest()`, which builds `ModalExtractionCoordinator` against its
+own injected extraction service and gates on the same five settings the existing upload
+route checks. `submit()` is asynchronous (QUEUED, no elements), so `_ingest` waits for
+pages to settle — bounded by `CONTRACT_EXTRACTION_MODAL_WAIT_SECONDS`, after which the
+partial document is used with a warning rather than paying for a second extraction.
+
 **LLM use:** OpenAI SDK via `settings.OPENAI_DEPLOYMENT_ID`, as the rest of the repo
 does. The API key in `.env` has been returning 401 — the service must degrade to
 deterministic-only extraction and return blanks plus a clear warning rather than 500.
@@ -290,7 +313,7 @@ connection. SQLModel model appended to `backend/app/models.py`, one Alembic revi
 - `document_id: uuid` — the `document_extraction` row this came from, indexed
 - `source_name: str(255)`, `source_sha256: str(64)` indexed
 - **10 named field columns**, one per catalogue key, all `str`, `nullable=False`,
-  `default=""` — `contract_title`, `parties`, `effective_date`, `term_end_date`,
+  `default=""` — `contract_title`, `customer`, `effective_date`, `term_end_date`,
   `contract_value`, `governing_law`, `payment_terms`, `notice_period`,
   `renewal_terms`, `termination_clause`
 - `selected_fields: list` JSON column — which of the ten keys were requested, so a

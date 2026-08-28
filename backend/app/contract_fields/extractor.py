@@ -31,6 +31,7 @@ from app.core.config import settings
 from app.visual_document_extractor.models import DocumentResult, ExtractedElement
 
 from .catalogue import FIELD_BY_KEY, FieldDefinition, ValueFormat
+from .normalize import collapse_whitespace
 
 MAX_ELEMENTS_FOR_PROVIDER = 120
 MAX_ELEMENT_CHARS = 400
@@ -44,7 +45,7 @@ PROVIDER_UNAVAILABLE_WARNING = (
 class FieldCandidate(BaseModel):
     """One proposal for one field, with the source it must be checked against.
 
-    `values` is a list because `parties` may resolve to several names; every other
+    `values` is a list because a candidate may carry several source spans; every other
     field carries exactly one. Each value is grounded independently.
     """
 
@@ -103,7 +104,7 @@ _COMMA = re.compile(rf",(?!\s*{_ENTITY_SUFFIX}(?:\s|,|$))", re.I)
 # Ordered label patterns per field. The first element that matches wins.
 _LABELS: dict[str, tuple[str, ...]] = {
     "contract_title": (),
-    "parties": (r"by and between", r"\bbetween\b", r"\bparties\b"),
+    "customer": (r"by and between", r"\bbetween\b", r"\bparties\b"),
     "effective_date": (
         r"effective\s+date",
         r"commencement\s+date",
@@ -167,7 +168,7 @@ _LABELS: dict[str, tuple[str, ...]] = {
 # what a value looks like, so treating them as labels would blank the real value.
 _HEADINGS: dict[str, tuple[str, ...]] = {
     "contract_title": (),
-    "parties": (r"parties",),
+    "customer": (r"parties",),
     "effective_date": (r"effective\s+date", r"commencement\s+date"),
     "term_end_date": (
         r"expiration\s+date",
@@ -208,17 +209,41 @@ LABEL_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
 
 def _earliest_label(
     text: str, patterns: tuple[re.Pattern[str], ...]
-) -> re.Match[str] | None:
-    """The label match that starts earliest in the element.
+) -> tuple[int, int] | None:
+    r"""The span of the label that starts earliest in the element.
 
     Tuple order is specificity order, not position order, so picking the first
     pattern that matches anywhere truncates the value: on "Termination: Termination
     for convenience on notice" the specific pattern matches at offset 13 and the
     value becomes "on notice".
+
+    Earliest-start alone is not enough either. Two patterns can describe the *same*
+    label with different extents — on "Automatic Renewal Terms: ..." the loose
+    `auto…renew\w*` matches "Automatic Renewal" (0, 17) while `renewal\s+terms?`
+    matches "Renewal Terms" (10, 23). Taking only the earliest stops mid-label and
+    hands the remainder back as the value: `"Terms: ..."`, or a bare `"Terms:"` when
+    the clause carries no value. So the span is **extended through any match that
+    overlaps it and reaches further**, which consumes the label whole.
+
+    Extension requires an overlap, so a later, disjoint match is never absorbed:
+    "Termination" (0, 11) does not reach "Termination for convenience" (13, 40), and
+    a value-shaped pattern sitting after the label — `\bnet\s+\d{1,3}\b` on
+    "Payment Terms: Net 30" — stays outside the span and survives as the value.
     """
 
     matches = [match for pattern in patterns if (match := pattern.search(text))]
-    return min(matches, key=lambda match: match.start()) if matches else None
+    if not matches:
+        return None
+    chosen = min(matches, key=lambda match: match.start())
+    start, end = chosen.start(), chosen.end()
+    extended = True
+    while extended:
+        extended = False
+        for match in matches:
+            if match.start() <= end < match.end():
+                end = match.end()
+                extended = True
+    return start, end
 
 
 def _text_of(element: ExtractedElement) -> str:
@@ -229,10 +254,10 @@ def _has_letters(text: str) -> bool:
     return bool(re.search(r"[^\W\d_]", text))
 
 
-def _after_label(text: str, match: re.Match[str]) -> str:
-    """The text following a label, with a separating colon or dash removed."""
+def _after_label(text: str, label: tuple[int, int]) -> str:
+    """The text following a label span, with a separating colon or dash removed."""
 
-    tail = text[match.end() :]
+    tail = text[label[1] :]
     tail = re.sub(r"^\s*[:\-—–]\s*", " ", tail)
     return tail.strip(" \t.;")
 
@@ -305,19 +330,141 @@ def _title_candidate(
     return None
 
 
-def _parties_candidate(
+def _comparable_organization(name: str) -> str:
+    """An organisation name reduced for comparison only — never for storage.
+
+    Case, punctuation, and the corporate suffix are all things the same company is
+    written with and without across one contract ("Acme Corp, Inc." in the preamble,
+    "Acme Corp" in the signature block), so none of them may decide identity.
+    """
+
+    stripped = re.sub(r"[^\w\s]", " ", name.casefold())
+    stripped = _ENTITY_AT_END.sub("", stripped)
+    return collapse_whitespace(stripped).strip()
+
+
+def is_home_organization(name: str) -> bool:
+    """Whether this party is the organisation running the deployment.
+
+    Matching is containment in either direction on the comparable form, so a
+    configured "Acme Corp, Inc." recognises "Acme Corp" in the document and vice
+    versa. An alias that is not configured is treated as the counterparty — the
+    failure mode is a value a human can see and correct, never a silently dropped
+    party.
+    """
+
+    target = _comparable_organization(name)
+    if not target:
+        return False
+    for home in settings.CONTRACT_HOME_ORGANIZATIONS:
+        candidate = _comparable_organization(home)
+        if not candidate:
+            continue
+        if target == candidate or target in candidate or candidate in target:
+            return True
+    return False
+
+
+def _strip_home_organization(body: str) -> str:
+    """The preamble with the home organisation's name removed from either end.
+
+    Returns a **contiguous** span of the original text — the side of the home name
+    that is left — never a stitched-together string, because a value that is not a
+    substring of its source element cannot be grounded.
+
+    Empty when no configured name is found, when nothing is left, or when what is
+    left still looks like the home organisation.
+    """
+
+    for home in settings.CONTRACT_HOME_ORGANIZATIONS:
+        name = home.strip()
+        if not name:
+            continue
+        # Longest form first, then without the corporate suffix: a contract that
+        # says "Acme Corp" in the preamble and "Acme Corp, Inc." in the signature
+        # block is one company, and only the configured spelling would match here.
+        forms = [name]
+        without_suffix = _ENTITY_AT_END.sub("", name).strip(" ,.;")
+        if without_suffix and without_suffix.casefold() != name.casefold():
+            forms.append(without_suffix)
+
+        found = None
+        for form in forms:
+            # Allow punctuation and spacing drift, the same tolerance
+            # `is_home_organization` applies.
+            # `(?!\w)` rather than a trailing `\b`: the form may end in punctuation
+            # ("Inc."), where `\b` asserts the wrong thing. Without it "Acme Corp"
+            # matched inside "Acme Corporation" and left "oration and ..." behind.
+            pattern = re.compile(
+                r"\b"
+                + r"[\s.,]*".join(re.escape(part) for part in form.split())
+                + r"(?!\w)",
+                re.I,
+            )
+            found = pattern.search(body)
+            if found is not None:
+                break
+        if found is None:
+            continue
+        before = body[: found.start()]
+        after = body[found.end() :]
+        for side in (after, before):
+            candidate = _CONJUNCTION_EDGE.sub("", side).strip(" ,;.&")
+            if candidate and _has_letters(candidate):
+                return candidate
+    return ""
+
+
+#: A leading or trailing "and"/"&" left behind once the home name is removed.
+_CONJUNCTION_EDGE = re.compile(r"^\s*(?:and|&)\s+|\s+(?:and|&)\s*$", re.I)
+
+
+def _customer_candidate(
     elements: list[ExtractedElement], page: int
 ) -> FieldCandidate | None:
+    """The counterparty: the one party that is not the home organisation.
+
+    This is where the schema got simpler. The old `parties` field had to delimit an
+    arbitrary number of entities and hand them all on, which put the whole
+    "how many parties are there" problem into the grounding path. A contract has a
+    home side and an other side; the home side is configuration, so the answer is a
+    single name and the ambiguity is gone.
+
+    Exactly one survivor is required. Zero means every named party is the home
+    organisation; more than one means the counterparty is genuinely ambiguous. Both
+    return no candidate, so the field blanks and a human is asked — never a guess.
+    """
+
     for element in elements:
         text = _text_of(element)
         match = _PARTY_PREAMBLE.search(text)
         if match is None:
             continue
-        names = split_parties(match.group("body"))
-        if names:
+        body = match.group("body")
+
+        names = split_parties(body)
+        others = [name for name in names if not is_home_organization(name)]
+        if len(others) == 1:
             return FieldCandidate(
-                field_key="parties",
-                values=names,
+                field_key="customer",
+                values=others,
+                source_element_ids=[element.element_id],
+                page_number=page,
+                confidence=element.confidence,
+            )
+
+        # Splitting did not resolve it — an unrecognised corporate suffix leaves the
+        # preamble as one string, and that string *contains* the home name, so it
+        # reads as the home organisation and the field would blank.
+        #
+        # Knowing the home name gives a second route that does not need the split to
+        # be right: find that name and take the text on the other side of it. The
+        # result is still a contiguous span of the source, so it stays groundable.
+        remainder = _strip_home_organization(body)
+        if remainder and not is_home_organization(remainder):
+            return FieldCandidate(
+                field_key="customer",
+                values=[remainder],
                 source_element_ids=[element.element_id],
                 page_number=page,
                 confidence=element.confidence,
@@ -364,10 +511,129 @@ def _shaped_candidate(
     return None
 
 
+#: How far past a bare heading to look for its clause. Generous, because word-level
+#: OCR spreads one clause over many elements; bounded, because a clause that never
+#: terminates must not swallow the rest of the page.
+_CLAUSE_LOOKAHEAD = 40
+
+
+def _label_across_elements(
+    definition: FieldDefinition,
+    elements: list[ExtractedElement],
+    page: int,
+) -> FieldCandidate | None:
+    r"""Second pass for documents whose *label* is split across elements.
+
+    Word-level OCR emits "Notice" and "Period:" as separate elements, so no single
+    element matches `notice\s+period` and the per-element scan finds no label at all —
+    the field simply never gets a candidate. This joins a window of elements, finds
+    the label in the joined text, and maps the value's character span back to the
+    elements it came from so the citation stays honest.
+
+    Runs only when the per-element scan found nothing, so paragraph-level documents —
+    where one element already holds the whole clause — are unaffected.
+    """
+
+    patterns = LABEL_PATTERNS[definition.key]
+    tokens = [
+        (element.element_id, _text_of(element))
+        for element in elements
+        if _text_of(element)
+    ]
+    for start in range(len(tokens)):
+        window = tokens[start : start + _CLAUSE_LOOKAHEAD]
+        if len(window) < 2:
+            break
+        offsets: list[tuple[int, int]] = []
+        cursor = 0
+        for _, token_text in window:
+            offsets.append((cursor, cursor + len(token_text)))
+            cursor += len(token_text) + 1
+        joined = " ".join(token_text for _, token_text in window)
+
+        label = _earliest_label(joined, patterns)
+        # The label must open this window; a label further in belongs to the window
+        # that starts on it, and matching it here would swallow the preceding clause.
+        if label is None or label[0] != 0:
+            continue
+        # A single element already carrying the whole label is the first pass's job.
+        if label[1] <= offsets[0][1]:
+            continue
+
+        value_start = label[1]
+        value_end = len(joined)
+        # A new clause heading ends this one — but only once this clause has started.
+        # The first word after "Termination Clause:" is "Termination", which reads as
+        # a heading on its own; breaking there left "on written notice." as the value.
+        started = False
+        for position, (token_start, token_end) in enumerate(offsets):
+            # `token_start`, not `token_end`: the label's last token overlaps the
+            # value by its separator ("Clause:" ends one character past the label),
+            # and letting it count as the first value word consumed `started` — so
+            # the next word broke the loop and the value began mid-clause.
+            if token_start < value_start:
+                continue
+            token_text = window[position][1]
+            # Test the heading against the *joined remainder*, not the lone token:
+            # headings are word-split too, so "Payment" on its own matches nothing
+            # and the clause ran on through "Payment Terms: ... Notice Period: ..."
+            # into the fields that followed it.
+            if started and _starts_a_heading(joined[token_start:]):
+                value_end = token_start
+                break
+            started = True
+            if token_text.endswith((".", ";")):
+                value_end = token_end
+                break
+
+        raw = joined[value_start:value_end]
+        lead = re.match(r"^\s*[:\-—–]?\s*", raw)
+        offset = lead.end() if lead is not None else 0
+        value = raw[offset:].strip()
+        if not value or not _has_letters(value):
+            continue
+
+        # Cite only the elements the value itself covers. Counting the separator in
+        # made the label's own element a citation ("Law:" for "State of Delaware"),
+        # and gate 1 rejects a value that does not account for everything it cites —
+        # so an off-by-one-character span blanked a correctly extracted field.
+        value_from = value_start + offset
+        value_to = value_from + len(value)
+        cited = [
+            token_id
+            for (token_id, _), (token_start, token_end) in zip(
+                window, offsets, strict=True
+            )
+            if token_end > value_from and token_start < value_to
+        ]
+        if not cited:
+            continue
+        return FieldCandidate(
+            field_key=definition.key,
+            values=[value],
+            source_element_ids=cited,
+            page_number=page,
+            confidence=None,
+        )
+    return None
+
+
+def _starts_a_heading(text: str) -> bool:
+    """Whether this element opens some field's clause — any field, not just ours."""
+
+    return any(
+        pattern.match(text)
+        for patterns in HEADING_PATTERNS.values()
+        for pattern in patterns
+    )
+
+
 def _verbatim_candidate(
     definition: FieldDefinition,
     elements: list[ExtractedElement],
     page: int,
+    *,
+    allow_follow_on: bool = True,
 ) -> FieldCandidate | None:
     """A verbatim clause: the text after its label, or the element that follows a
     bare heading."""
@@ -389,17 +655,56 @@ def _verbatim_candidate(
                 page_number=page,
                 confidence=element.confidence,
             )
-        # A bare heading: the clause is the element that follows it.
-        for following in elements[index + 1 : index + 3]:
+        # A bare heading: the clause is what follows it.
+        #
+        # This cannot assume one element per clause. Tesseract emits one element per
+        # *word*, so both the label and its value arrive split: "Renewal", "Terms:",
+        # "Automatic", "renewal", ... Taking the single next element then returned the
+        # rest of the label as the value — the `"Terms:"` and `"Clause:"` defect.
+        #
+        # So: absorb any following element that is still part of the label, then
+        # gather the clause until it ends.
+        if not allow_follow_on:
+            continue
+        gathered: list[str] = []
+        source_ids: list[str] = []
+        prefix = text
+        for following in elements[index + 1 : index + 1 + _CLAUSE_LOOKAHEAD]:
             body = _text_of(following)
-            if body and _has_letters(body):
-                return FieldCandidate(
-                    field_key=definition.key,
-                    values=[body],
-                    source_element_ids=[following.element_id],
-                    page_number=page,
-                    confidence=following.confidence,
-                )
+            if not body:
+                continue
+            if not gathered:
+                # Still completing the label? Re-read the label across the join and
+                # see whether anything is left over. "Renewal" + "Terms:" yields no
+                # tail, so "Terms:" is label, not value.
+                joined = f"{prefix} {body}"
+                joined_label = _earliest_label(joined, patterns)
+                if joined_label is not None:
+                    joined_tail = _after_label(joined, joined_label)
+                    if not (joined_tail and _has_letters(joined_tail)):
+                        prefix = joined
+                        continue
+            # A new clause heading ends this one, whichever field it announces.
+            if gathered and _starts_a_heading(body):
+                break
+            if not _has_letters(body) and not gathered:
+                continue
+            gathered.append(body)
+            source_ids.append(following.element_id)
+            if body.endswith((".", ";")):
+                break
+        if gathered:
+            return FieldCandidate(
+                field_key=definition.key,
+                # Joined verbatim, terminator included: the clause's own full stop is
+                # part of the source text, and stripping it makes the value stop being
+                # a faithful excerpt — grounding then scores it "not fully supported"
+                # and blanks a value that was correct.
+                values=[" ".join(gathered).strip()],
+                source_element_ids=source_ids,
+                page_number=page,
+                confidence=element.confidence,
+            )
     return None
 
 
@@ -424,15 +729,27 @@ def extract_deterministic(
                     if page.page_number == 1
                     else None
                 )
-            elif key == "parties":
-                found = _parties_candidate(elements, page.page_number)
+            elif key == "customer":
+                found = _customer_candidate(elements, page.page_number)
             elif definition.value_format in (
                 ValueFormat.DATE_DDMMYYYY,
                 ValueFormat.CURRENCY_AMOUNT,
             ):
                 found = _shaped_candidate(definition, elements, page.page_number)
             else:
-                found = _verbatim_candidate(definition, elements, page.page_number)
+                # Ordered by how much evidence sits in one place. A label and its
+                # value in the same element is unambiguous; reading a label across
+                # elements is next; following a bare heading to whatever comes after
+                # is the weakest, and must not pre-empt the other two — a loose
+                # value-shaped pattern ("\binvoice\b") matching mid-clause would
+                # otherwise return the next word ("date.") as the whole answer.
+                found = (
+                    _verbatim_candidate(
+                        definition, elements, page.page_number, allow_follow_on=False
+                    )
+                    or _label_across_elements(definition, elements, page.page_number)
+                    or _verbatim_candidate(definition, elements, page.page_number)
+                )
             if found is not None:
                 candidates[key] = found
     return candidates
@@ -452,13 +769,27 @@ Hard rules:
   that is not written in the document.
 - If a field is not stated in the document, return an empty string for it. A blank is
   always correct; a plausible guess is a defect.
-- `parties` is a list of the contracting entities, each named exactly as the document
-  names them.
+- `customer` is the counterparty: the single organisation the agreement is with,
+  named exactly as the document names it. It is never the home organisation named
+  below — if the only party in the contract is the home organisation, return an
+  empty string rather than naming it.
 - Every value must cite at least one element id it appears in.
 
 Reply with JSON only: {"fields": {"<field_key>": {"value": "...", "element_ids":
-["..."]}}}. For `parties` use {"values": ["...", "..."], "element_ids": ["..."]}.
+["..."]}}}.
 """
+
+
+def _system_prompt() -> str:
+    """The prompt with the deployment's own organisation names filled in.
+
+    Built per call rather than at import so a changed setting takes effect without a
+    restart, and so tests can vary it.
+    """
+
+    names = [name for name in settings.CONTRACT_HOME_ORGANIZATIONS if name.strip()]
+    home = "; ".join(names) if names else "(none configured)"
+    return f"{_SYSTEM_PROMPT}\nHome organisation (never the customer): {home}\n"
 
 
 def _provider_payload(
@@ -538,7 +869,7 @@ def extract_with_provider(
     response = OpenAI().chat.completions.create(
         model=settings.OPENAI_DEPLOYMENT_ID,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": _system_prompt()},
             {"role": "user", "content": prompt},
         ],
         temperature=0,

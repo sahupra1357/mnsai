@@ -10,7 +10,7 @@ from app.contract_fields.normalize import (
     normalize_currency,
     normalize_date,
     normalize_field_value,
-    normalize_party_list,
+    normalize_organization_name,
     normalize_verbatim,
 )
 
@@ -116,45 +116,57 @@ def test_normalize_currency_garbage_is_blank(raw: object) -> None:
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        # The normalizer NEVER splits: how many parties there are is the extractor's
-        # decision, made from the source elements in Phase 3.
+        # The normalizer NEVER splits or rewrites a legal name. Which organisation
+        # is the customer is the extractor's decision — it is the party that is not
+        # one of `settings.CONTRACT_HOME_ORGANIZATIONS`.
         ("Smith and Wesson", "Smith and Wesson"),
         ("Johnson and Johnson", "Johnson and Johnson"),
         ("Acme Corp, a Delaware corporation", "Acme Corp, a Delaware corporation"),
         ("Acme Corp and Northwind Ltd", "Acme Corp and Northwind Ltd"),
         ("Ben & Jerry's Homemade, Inc.", "Ben & Jerry's Homemade, Inc."),
-        ("Acme Corp", "Acme Corp"),
-        ("  Acme   Corp  ", "Acme Corp"),
-        # One party per element, joined in source order — never merged, never
-        # de-duplicated, never re-split.
-        (["Acme Corp", "Northwind Ltd"], "Acme Corp; Northwind Ltd"),
-        (["Smith and Wesson", "Acme LLC"], "Smith and Wesson; Acme LLC"),
-        (["Acme Corp", "Acme Corp"], "Acme Corp; Acme Corp"),
-        (("Acme Corp", "Northwind Ltd"), "Acme Corp; Northwind Ltd"),
+        ("Northwind Ltd", "Northwind Ltd"),
+        ("  Northwind   Ltd  ", "Northwind Ltd"),
+        # A single-entry list is accepted as a courtesy to providers that wrap it.
+        (["Northwind Ltd"], "Northwind Ltd"),
+        (("Northwind Ltd",), "Northwind Ltd"),
     ],
 )
-def test_normalize_party_list_never_splits_or_merges(
+def test_normalize_organization_name_never_splits_or_merges(
     raw: object, expected: str
 ) -> None:
-    assert normalize_party_list(raw) == expected
+    assert normalize_organization_name(raw) == expected
 
 
-def test_normalize_party_list_keeps_every_parenthetical() -> None:
+@pytest.mark.parametrize(
+    "raw",
+    [
+        ["Acme Corp", "Northwind Ltd"],
+        ["Smith and Wesson", "Acme LLC"],
+        ("Acme Corp", "Northwind Ltd", "Globex"),
+    ],
+)
+def test_more_than_one_organisation_is_blank_not_a_guess(raw: object) -> None:
+    """The field holds one counterparty. Several means the extractor did not resolve
+    it, and picking one here would be a guess — blank raises it for a human."""
+
+    assert normalize_organization_name(raw) == ""
+
+
+def test_normalize_organization_name_keeps_every_parenthetical() -> None:
     # A parenthetical may be a defined term or may be part of the legal name; the
     # normalizer does not get to decide, and rewriting would break grounding.
-    assert normalize_party_list('Acme Corp ("Vendor")') == 'Acme Corp ("Vendor")'
-    assert normalize_party_list("Grupo Éxito, S.A. (Colombia)") == (
+    assert normalize_organization_name('Acme Corp ("Vendor")') == 'Acme Corp ("Vendor")'
+    assert normalize_organization_name("Grupo Éxito, S.A. (Colombia)") == (
         "Grupo Éxito, S.A. (Colombia)"
     )
-    assert (
-        normalize_party_list(["Acme Corp (Delaware)", "Northwind Ltd (UK)"])
-        == "Acme Corp (Delaware); Northwind Ltd (UK)"
-    )
+    assert normalize_organization_name(["Northwind Ltd (UK)"]) == "Northwind Ltd (UK)"
 
 
-@pytest.mark.parametrize("raw", ["", "   ", "123 456", ", ; ,", None, 42, ["Acme", 7]])
-def test_normalize_party_list_garbage_is_blank(raw: object) -> None:
-    assert normalize_party_list(raw) == ""
+@pytest.mark.parametrize(
+    "raw", ["", "   ", "123 456", ", ; ,", None, 42, ["Acme", 7], []]
+)
+def test_normalize_organization_name_garbage_is_blank(raw: object) -> None:
+    assert normalize_organization_name(raw) == ""
 
 
 def test_normalize_verbatim_trims_and_collapses() -> None:
@@ -172,9 +184,9 @@ def test_normalize_verbatim_garbage_is_blank(raw: object) -> None:
 def test_normalize_field_value_dispatches_on_the_catalogue_format() -> None:
     assert normalize_field_value("effective_date", "January 15, 2026") == "15/01/2026"
     assert normalize_field_value("contract_value", "$2 million") == "USD 2000000.00"
-    assert normalize_field_value("parties", ["Acme Corp", "Northwind Ltd"]) == (
-        "Acme Corp; Northwind Ltd"
-    )
+    assert normalize_field_value("customer", ["Northwind Ltd"]) == "Northwind Ltd"
+    # Two organisations is unresolved, not a joined value.
+    assert normalize_field_value("customer", ["Acme Corp", "Northwind Ltd"]) == ""
     assert normalize_field_value("governing_law", " State of  Delaware ") == (
         "State of Delaware"
     )

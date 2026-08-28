@@ -228,7 +228,7 @@ export type ContractFieldResult = {
  */
 export type ContractFields = {
   contract_title?: string
-  parties?: string
+  customer?: string
   effective_date?: string
   term_end_date?: string
   contract_value?: string
@@ -632,7 +632,7 @@ export type ValidationError = {
  */
 export type ValueFormat =
   | "verbatim"
-  | "party_list"
+  | "organization_name"
   | "date_ddmmyyyy"
   | "currency_amount"
 

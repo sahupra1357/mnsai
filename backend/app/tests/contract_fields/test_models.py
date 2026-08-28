@@ -25,7 +25,7 @@ from app.visual_document_extractor.semantic import GroundingStatus
 
 MACHINE_VALUES = {
     "contract_title": "Master Services Agreement",
-    "parties": "Acme Corp; Northwind Ltd",
+    "customer": "Northwind Ltd",
     "effective_date": "15/01/2026",
     "term_end_date": "14/01/2027",
     "contract_value": "USD 250000.00",
@@ -91,7 +91,7 @@ def test_contract_fields_blank_keys_reports_what_is_missing() -> None:
 def test_selection_accepts_one_field_through_all_ten() -> None:
     """Any non-empty subset of the ten, and the scope is exactly the subset."""
 
-    assert FieldSelection(selected_fields=["parties"]).requested_keys == ("parties",)
+    assert FieldSelection(selected_fields=["customer"]).requested_keys == ("customer",)
     assert (
         FieldSelection(selected_fields=list(DEFAULT_FIELD_KEYS)).requested_keys
         == DEFAULT_FIELD_KEYS
@@ -172,7 +172,7 @@ def test_a_blank_requested_field_cannot_be_silently_complete() -> None:
     # The silent pass this feature exists to prevent: a requested field is blank, yet
     # nothing lists it and the status claims success.
     with pytest.raises(ValidationError, match="must be listed in unresolved_fields"):
-        _result(fields=ContractFields.from_values({**MACHINE_VALUES, "parties": ""}))
+        _result(fields=ContractFields.from_values({**MACHINE_VALUES, "customer": ""}))
 
     with pytest.raises(ValidationError, match="must be listed in unresolved_fields"):
         _result(
@@ -387,7 +387,7 @@ def test_provenance_rejects_an_unknown_field_and_an_empty_source() -> None:
         )
     with pytest.raises(ValidationError):
         FieldProvenance(
-            field_key="parties",
+            field_key="customer",
             page_number=1,
             source_element_ids=[],
             grounding_status=GroundingStatus.GROUNDED,
