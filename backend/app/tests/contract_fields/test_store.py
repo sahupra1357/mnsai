@@ -45,7 +45,7 @@ DOCUMENT_ID = uuid.UUID("00000000-0000-0000-0000-0000000000c3")
 
 MACHINE_VALUES = {
     "contract_title": "Master Services Agreement",
-    "parties": "Acme Corp; Northwind Ltd",
+    "customer": "Northwind Ltd",
     "effective_date": "15/01/2026",
     "term_end_date": "14/01/2027",
     "contract_value": "USD 250000.00",

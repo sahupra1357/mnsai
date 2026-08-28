@@ -211,7 +211,7 @@ def test_extract_with_the_default_five_selected(client: TestClient) -> None:
     assert body["extraction_status"] == "complete"
     assert body["selected_fields"] == list(DEFAULT_FIELD_KEYS)
     assert body["fields"]["contract_title"] == "Master Services Agreement"
-    assert body["fields"]["parties"] == "Acme Corp, Inc.; Northwind Ltd."
+    assert body["fields"]["customer"] == "Northwind Ltd."
     assert body["fields"]["effective_date"] == "15/01/2026"
     assert body["fields"]["contract_value"] == "USD 250000.00"
     # Present and blank, because they were never requested.
@@ -244,11 +244,11 @@ def test_extract_with_a_default_field_deselected(client: TestClient) -> None:
     """Every field is deselectable now — dropping `parties` must leave it blank and
     must not count as a failure."""
 
-    selected = [key for key in DEFAULT_FIELD_KEYS if key != "parties"]
+    selected = [key for key in DEFAULT_FIELD_KEYS if key != "customer"]
     body = _upload(client, selected).json()
 
     assert body["selected_fields"] == selected
-    assert body["fields"]["parties"] == ""
+    assert body["fields"]["customer"] == ""
     assert body["extraction_status"] == "complete"
     assert body["unresolved_fields"] == []
 
@@ -501,7 +501,7 @@ def test_a_fully_labelled_contract_reaches_complete(client: TestClient) -> None:
     assert body["unresolved_fields"] == []
     assert body["fields"] == {
         "contract_title": "Master Services Agreement",
-        "parties": "Acme Corp, Inc.; Northwind Ltd.",
+        "customer": "Northwind Ltd.",
         "effective_date": "15/01/2026",
         "term_end_date": "14/01/2027",
         "contract_value": "USD 250000.00",

@@ -26,7 +26,7 @@ class ValueFormat(str, Enum):
     """How a field's value is normalized before it reaches the JSON and the table."""
 
     VERBATIM = "verbatim"
-    PARTY_LIST = "party_list"
+    ORGANIZATION_NAME = "organization_name"
     DATE_DDMMYYYY = "date_ddmmyyyy"
     CURRENCY_AMOUNT = "currency_amount"
 
@@ -62,19 +62,19 @@ FIELD_CATALOGUE: tuple[FieldDefinition, ...] = (
         default_selected=True,
     ),
     FieldDefinition(
-        key="parties",
-        label="Parties",
+        key="customer",
+        label="Customer",
         description=(
-            "The legal entities entering into the agreement, named as the document "
-            "names them, in the order they first appear. Return each entity as its "
-            "own item — you delimit the parties, because the normalizer never "
-            "splits a combined string: 'Smith and Wesson' would stay one party. "
-            "Exclude signatories, witnesses, notaries, and addresses — only the "
-            "contracting entities. Do not include the recital preamble ('This "
-            "Agreement is made by and between …'); start each item at the entity's "
-            "own name."
+            "The counterparty: the organisation this agreement is with, named as "
+            "the document names it. Exactly one entity — the party that is **not** "
+            "the organisation running this system, whose own names are configured "
+            "in CONTRACT_HOME_ORGANIZATIONS and are never the answer. Exclude "
+            "signatories, witnesses, notaries, and addresses. Do not include the "
+            "recital preamble ('This Agreement is made by and between …'); start "
+            "at the entity's own name, and return it exactly as written — the "
+            "normalizer only collapses whitespace, it never rewrites a legal name."
         ),
-        value_format=ValueFormat.PARTY_LIST,
+        value_format=ValueFormat.ORGANIZATION_NAME,
         default_selected=True,
     ),
     FieldDefinition(

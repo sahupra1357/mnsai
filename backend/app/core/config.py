@@ -85,6 +85,25 @@ class Settings(BaseSettings):
     DOCUMENT_EXTRACTOR_MODAL_SOURCE_MAX_USES: int = 3
     MISTRAL_API_KEY: str | None = None
 
+    # --- Contract field extraction ------------------------------------------ #
+    # The organisation running this deployment. The `customer` field is the *other*
+    # side of the contract, so any party matching one of these names is dropped.
+    #
+    # Deliberately a list, not a comma-separated string: legal names contain commas
+    # ("Acme Corp, Inc."), so splitting on them would shred the value. Override in
+    # the environment as JSON, e.g.
+    #   CONTRACT_HOME_ORGANIZATIONS='["Acme Corp, Inc.", "Acme Corporation", "Acme"]'
+    # List every alias the contracts actually use — matching is on the names given
+    # here, and an unlisted alias is treated as the counterparty.
+    CONTRACT_HOME_ORGANIZATIONS: list[str] = ["Acme Corp, Inc."]
+
+    # Field extraction reads what the document extractor produced, so it has to wait
+    # for a Modal parse to land before it has anything to read. Bounded: past this,
+    # the record is persisted with whatever is known and raised for a human rather
+    # than holding the request open for the parser's full timeout.
+    CONTRACT_EXTRACTION_MODAL_WAIT_SECONDS: float = 90.0
+    CONTRACT_EXTRACTION_MODAL_POLL_SECONDS: float = 2.0
+
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str, BeforeValidator(parse_cors)
     ] = []

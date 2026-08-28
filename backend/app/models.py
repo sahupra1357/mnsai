@@ -371,7 +371,7 @@ class ContractFieldExtractionRecord(SQLModel, table=True):
     contract_title: str = Field(
         default="", nullable=False, sa_column_kwargs={"server_default": ""}
     )
-    parties: str = Field(
+    customer: str = Field(
         default="", nullable=False, sa_column_kwargs={"server_default": ""}
     )
     effective_date: str = Field(

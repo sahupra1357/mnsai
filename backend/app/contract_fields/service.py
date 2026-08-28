@@ -15,13 +15,16 @@ Two rules shape every branch here:
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import Sequence
+from typing import Any
 
 from sqlmodel import Session
 
+from app.core.config import settings
 from app.models import ContractFieldExtractionRecord
-from app.visual_document_extractor.models import DocumentResult
+from app.visual_document_extractor.models import DocumentResult, PageStatus
 from app.visual_document_extractor.service import DocumentExtractionService
 
 from . import store
@@ -123,7 +126,7 @@ def resolve_fields(
             )
             continue
 
-        raw: object = accepted if key == "parties" else accepted[0]
+        raw: object = accepted if key == "customer" else accepted[0]
         normalized = normalize_field_value(key, raw)
         if not normalized:
             outcome.values[key] = ""
@@ -187,11 +190,141 @@ def to_row(record: ContractFieldExtractionRecord) -> ContractFieldRecordRow:
     )
 
 
+#: A page is still being worked on in these states; anything else is settled.
+_UNSETTLED_PAGE_STATUSES = frozenset({PageStatus.PENDING, PageStatus.EXTRACTING})
+
+
+def _pages_settled(document: DocumentResult) -> bool:
+    """Whether every page has finished, the same rule the Modal callback applies."""
+
+    return bool(document.pages) and all(
+        page.page_status not in _UNSETTLED_PAGE_STATUSES for page in document.pages
+    )
+
+
 class ContractFieldService:
     """Runs one extraction end to end."""
 
     def __init__(self, extraction_service: DocumentExtractionService) -> None:
         self._extraction = extraction_service
+
+    def _ingest(
+        self, *, owner_id: uuid.UUID, source_name: str, content: bytes
+    ) -> tuple[DocumentResult, list[str]]:
+        """Extract the document, through Modal when it is configured.
+
+        `DocumentExtractionService.ingest` runs the *local* router, which only has
+        the adapters installed in this image — in practice tesseract. The existing
+        `/document-extractions` upload does not do that: it hands the work to
+        `ModalExtractionCoordinator` when Modal is configured, which is how a digital
+        PDF reaches a digital parser instead of being rasterised and OCR'd. This
+        feature took the local path, so it got OCR output for documents with a
+        perfect text layer. Same coordinator, same gating — imported, never
+        reimplemented, so the two paths cannot drift apart.
+
+        `submit` is asynchronous: on a successful dispatch it returns a QUEUED
+        document with no elements yet, so this waits for the pages to settle. It
+        already falls back to a local `ingest` itself when dispatch fails, so that
+        case arrives here fully extracted and the wait is skipped.
+        """
+
+        coordinator = self._modal_coordinator()
+        if coordinator is None:
+            return (
+                self._extraction.ingest(
+                    owner_id=owner_id, source_name=source_name, content=content
+                ),
+                [],
+            )
+
+        document = coordinator.submit(
+            owner_id=owner_id,
+            source_name=source_name,
+            content=content,
+            operator_parser=None,
+        )
+        if _pages_settled(document):
+            return document, []
+        return self._await_pages(document, owner_id)
+
+    def _modal_coordinator(self) -> Any | None:
+        """A coordinator bound to *this* service, or None when Modal is not set up.
+
+        The route's `get_modal_coordinator()` is hard-wired to the global
+        `extraction_service`, so it cannot be reused here without discarding the
+        service this instance was constructed with — which would also route straight
+        past any test double. The gate below is deliberately the same five
+        conditions the route applies; if those ever diverge, this feature falls back
+        to local extraction rather than doing something the other path would not.
+        """
+
+        if not settings.DOCUMENT_EXTRACTOR_MODAL_ENABLED:
+            return None
+
+        # Imported lazily: this pulls in the whole remote-execution stack, and at
+        # module scope it would tie this package's import order to the router's.
+        from app.visual_document_extractor.modal_execution import ModalDispatcher
+        from app.visual_document_extractor.remote_jobs import (
+            ModalExtractionCoordinator,
+            RemoteJobRepository,
+        )
+        from app.visual_document_extractor.store import SqlDocumentStore
+
+        # `getattr`, not attribute access: an extraction service without a store is
+        # a stand-in (tests use one), and a stand-in must stay on the local path
+        # rather than reaching for remote execution.
+        store_ = getattr(self._extraction, "store", None)
+        if (
+            not isinstance(store_, SqlDocumentStore)
+            or not settings.DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL
+            or not settings.DOCUMENT_EXTRACTOR_MODAL_KEY
+            or not settings.DOCUMENT_EXTRACTOR_MODAL_SECRET
+            or not settings.DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL
+        ):
+            return None
+        return ModalExtractionCoordinator(
+            self._extraction,
+            RemoteJobRepository(store_.engine),
+            ModalDispatcher(
+                endpoint_url=settings.DOCUMENT_EXTRACTOR_MODAL_ENDPOINT_URL,
+                endpoint_key=settings.DOCUMENT_EXTRACTOR_MODAL_KEY,
+                endpoint_secret=settings.DOCUMENT_EXTRACTOR_MODAL_SECRET,
+                timeout_seconds=(
+                    settings.DOCUMENT_EXTRACTOR_MODAL_DISPATCH_TIMEOUT_SECONDS
+                ),
+            ),
+            public_base_url=settings.DOCUMENT_EXTRACTOR_PUBLIC_BASE_URL,
+        )
+
+    def _await_pages(
+        self, document: DocumentResult, owner_id: uuid.UUID
+    ) -> tuple[DocumentResult, list[str]]:
+        """Poll until the dispatched pages land, or the deadline passes.
+
+        On timeout the partially-extracted document is used as it stands rather than
+        re-running the parse locally: the fields it cannot fill come back blank, the
+        row persists as `needs_verification`, and re-running once the parse lands
+        hits the extraction cache. Falling back to a second local extraction here
+        would pay for the document twice and leave two rows for one upload.
+        """
+
+        deadline = time.monotonic() + settings.CONTRACT_EXTRACTION_MODAL_WAIT_SECONDS
+        interval = max(settings.CONTRACT_EXTRACTION_MODAL_POLL_SECONDS, 0.1)
+        latest = document
+        while time.monotonic() < deadline:
+            time.sleep(interval)
+            refreshed = self._extraction.store.get(document.document_id, owner_id)
+            if refreshed is None:
+                break
+            latest = refreshed
+            if _pages_settled(latest):
+                return latest, []
+        return latest, [
+            "The document parser did not finish within "
+            f"{settings.CONTRACT_EXTRACTION_MODAL_WAIT_SECONDS:.0f}s; fields were "
+            "read from what had been extracted so far. Re-run this document once "
+            "the parse completes."
+        ]
 
     def extract(
         self,
@@ -210,7 +343,7 @@ class ContractFieldService:
         cache rather than being parsed again.
         """
 
-        document = self._extraction.ingest(
+        document, ingest_warnings = self._ingest(
             owner_id=owner_id, source_name=source_name, content=content
         )
         requested = requested_field_keys(selected_fields)
@@ -236,7 +369,7 @@ class ContractFieldService:
             field_provenance=[
                 entry.model_dump(mode="json") for entry in outcome.provenance
             ],
-            warnings=outcome.warnings,
+            warnings=[*ingest_warnings, *outcome.warnings],
         )
         return to_result(record)
 

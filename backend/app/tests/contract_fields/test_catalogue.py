@@ -14,7 +14,7 @@ from app.contract_fields.catalogue import (
 
 EXPECTED_KEYS = (
     "contract_title",
-    "parties",
+    "customer",
     "effective_date",
     "term_end_date",
     "contract_value",
@@ -93,7 +93,7 @@ def test_assembler_returns_the_same_ten_keys_for_a_partial_selection() -> None:
     assembled = assemble_fields(
         {
             "contract_title": "Master Services Agreement",
-            "parties": "Acme Corp; Northwind Ltd",
+            "customer": "Northwind Ltd",
             "governing_law": "State of Delaware",
             "payment_terms": "Net 30",
         },
@@ -154,7 +154,7 @@ def test_assembler_never_emits_null_or_a_non_string() -> None:
     assembled = assemble_fields(
         {
             "contract_title": None,
-            "parties": 42,
+            "customer": 42,
             "effective_date": ["15/01/2026"],
             # Whitespace is not a value: it must not satisfy a requested field.
             "contract_value": "   ",
@@ -165,7 +165,7 @@ def test_assembler_never_emits_null_or_a_non_string() -> None:
     assert tuple(assembled) == CANONICAL_FIELD_KEYS
     assert all(isinstance(value, str) for value in assembled.values())
     assert assembled["contract_title"] == ""
-    assert assembled["parties"] == ""
+    assert assembled["customer"] == ""
     assert assembled["effective_date"] == ""
     assert assembled["contract_value"] == ""
 

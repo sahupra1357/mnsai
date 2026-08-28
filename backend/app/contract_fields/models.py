@@ -207,7 +207,7 @@ class ContractFields(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     contract_title: str = ""
-    parties: str = ""
+    customer: str = ""
     effective_date: str = ""
     term_end_date: str = ""
     contract_value: str = ""

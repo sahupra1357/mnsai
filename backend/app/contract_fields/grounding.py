@@ -58,11 +58,27 @@ ACCEPTED_STATUSES = frozenset(
     {GroundingStatus.GROUNDED, GroundingStatus.GROUNDED_WITH_NORMALIZATION}
 )
 
-#: Gate 1 verdicts that gate 2 may never override. A sensitive mismatch means a
-#: number, identifier, or negation changed; spec rule 3 says blank it.
+#: Gate 1 verdicts that gate 2 may never override — a citation that does not resolve,
+#: or a value spliced across elements. Neither can be rescued by re-reading one
+#: element, so there is nothing for gate 2 to do.
+#:
+#: `REJECTED_SENSITIVE_MISMATCH` is deliberately **not** here. Gate 1 compares the
+#: proposal against the *whole* cited element, so a numbered clause fails it for the
+#: wrong reason: on "8. Governing Law: State of Delaware" the value drops the clause
+#: number "8", gate 1 counts that as a changed number, and the field blanks — while
+#: the identical unnumbered clause succeeds. On a realistically numbered contract that
+#: blanked most of the schema.
+#:
+#: Blanking is still the answer when a number really did change; that judgement just
+#: belongs at span scope, and gate 2 makes it: `excerpt_of_element` requires the value
+#: to appear verbatim in one element, **re-applies the sensitive-token comparison to
+#: the matched span**, requires every negation to survive, and requires a date or
+#: amount to sit in a clause naming its field. A proposal that alters a number cannot
+#: pass all four; a proposal that merely omits the clause number passes them all.
+#: Listing the verdict here made that span-scoped re-check dead code for the one
+#: verdict it was written for.
 NEVER_OVERRIDABLE = frozenset(
     {
-        GroundingStatus.REJECTED_SENSITIVE_MISMATCH,
         GroundingStatus.REJECTED_INVALID_REFERENCE,
         GroundingStatus.REJECTED_OVERLAP,
     }

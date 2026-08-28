@@ -363,42 +363,45 @@ def normalize_currency(raw: object) -> str:
     return found[0]
 
 
-def _party_name(candidate: object) -> str:
-    """One party, cleaned: whitespace collapsed, separators trimmed. Nothing else.
+def _organization_name(candidate: object) -> str:
+    """One organisation name, cleaned: whitespace collapsed, separators trimmed.
 
-    Never split, never merged, never de-duplicated, and no parenthetical dropped —
+    Never split, never merged, never rewritten, and no parenthetical dropped —
     "(Colombia)" may be part of the legal name, and rewriting the text would stop
-    the value being a substring of its source element when Phase 3 grounds it. The
-    name is whatever the extractor delimited. ``""`` only for something with no
-    letters in it, which is never a party name.
+    the value being a substring of its source element when it is grounded. ``""``
+    only for something with no letters in it, which is never an organisation name.
     """
 
     name = collapse_whitespace(candidate).strip(" ,;")
     return name if re.search(r"[^\W\d_]", name) else ""
 
 
-def normalize_party_list(raw: object) -> str:
-    """Normalize the contracting parties, joined with ``"; "`` in source order.
+def normalize_organization_name(raw: object) -> str:
+    """Normalize the counterparty's name — exactly one organisation.
 
-    Accepts a string (one party) or a list/tuple (one party per element, as the
-    extractor delimited them). The normalizer **never splits and never rewrites**:
-    ``"Smith and Wesson"`` is one party named "Smith and Wesson", and both
-    ``"Acme Corp, a Delaware corporation"`` and ``'Acme Corp ("Vendor")'`` come back
-    unchanged. Deciding how many parties there are is the
-    extractor's job in Phase 3, from the source elements.
+    Accepts a string. A list is accepted only as a courtesy for a provider that
+    returns one anyway: a single entry is used, and anything longer is ``""``
+    rather than a guess about which of them is the customer. Choosing *which*
+    organisation is the counterparty is the extractor's job — it is the side that
+    is not one of ``settings.CONTRACT_HOME_ORGANIZATIONS`` — and it is deliberately
+    not re-litigated here, so this stays a total, context-free function.
+
+    ``"Acme Corp, a Delaware corporation"`` and ``'Acme Corp ("Vendor")'`` come
+    back unchanged.
     """
 
     if isinstance(raw, list | tuple):
-        names: list[str] = []
-        for item in raw:
-            if not isinstance(item, str):
-                return ""
-            name = _party_name(item)
-            if name:
-                names.append(name)
-        return "; ".join(names)
+        # A malformed list is refused outright rather than filtered: a non-string
+        # entry means the caller does not know what it is holding, and salvaging the
+        # readable half of it would be a guess.
+        if any(not isinstance(item, str) for item in raw):
+            return ""
+        names = [item for item in raw if _organization_name(item)]
+        if len(names) != 1:
+            return ""
+        return _organization_name(names[0])
     if isinstance(raw, str):
-        return _party_name(raw)
+        return _organization_name(raw)
     return ""
 
 
@@ -415,6 +418,6 @@ def normalize_field_value(field_key: str, raw: object) -> str:
         return normalize_date(raw)
     if definition.value_format is ValueFormat.CURRENCY_AMOUNT:
         return normalize_currency(raw)
-    if definition.value_format is ValueFormat.PARTY_LIST:
-        return normalize_party_list(raw)
+    if definition.value_format is ValueFormat.ORGANIZATION_NAME:
+        return normalize_organization_name(raw)
     return normalize_verbatim(raw)

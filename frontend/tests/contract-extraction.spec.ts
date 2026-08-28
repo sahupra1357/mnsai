@@ -35,7 +35,7 @@ const CONTRACT_ROOT = "**/api/proxy/api/v1/contract-extractions"
 
 const DEFAULT_KEYS = [
   "contract_title",
-  "parties",
+  "customer",
   "effective_date",
   "term_end_date",
   "contract_value",
@@ -43,7 +43,7 @@ const DEFAULT_KEYS = [
 
 const FIXED = [
   ["contract_title", "Contract title"],
-  ["parties", "Parties"],
+  ["customer", "Customer"],
   ["effective_date", "Effective date"],
   ["term_end_date", "Term end date"],
   ["contract_value", "Contract value"],
@@ -222,7 +222,7 @@ test("all ten keys render even when no optional field was selected", async ({
     fields: {
       ...blankFields(),
       contract_title: "Master Services Agreement",
-      parties: "Acme Corp; Northwind Ltd",
+      customer: "Northwind Ltd",
       effective_date: "15/01/2026",
       term_end_date: "31/12/2026",
       contract_value: "USD 250000.00",
@@ -254,7 +254,7 @@ test("a blank requested field raises the non-dismissible failure banner", async 
     fields: {
       ...blankFields(),
       contract_title: "Master Services Agreement",
-      parties: "Acme Corp; Northwind Ltd",
+      customer: "Northwind Ltd",
       effective_date: "15/01/2026",
       contract_value: "USD 250000.00",
     },
@@ -306,19 +306,19 @@ test("a verified field shows the human value in the JSON, not the blank machine 
     selected_fields: DEFAULT_KEYS,
     extraction_status: "verified",
     unresolved_fields: [
-      { field_key: "parties", reason: "ungrounded", detail: null },
+      { field_key: "customer", reason: "ungrounded", detail: null },
     ],
     field_provenance: [],
     warnings: [],
     // The machine column stays blank; the human's answer lives here.
-    verified_values: { parties: "Acme Crop, Inc and Northwind Ltd" },
+    verified_values: { customer: "Northwind Ltd" },
     created_at: "2026-08-27T10:00:00Z",
   })
   await page.goto("/contract-extraction")
   await upload(page, "Extract 5 fields")
 
-  const row = page.locator('[data-field="parties"]')
-  await expect(row).toContainText('"Acme Crop, Inc and Northwind Ltd"')
+  const row = page.locator('[data-field="customer"]')
+  await expect(row).toContainText('"Northwind Ltd"')
   await expect(row).toContainText("human verified")
   // The resolved field is no longer presented as a failure.
   await expect(row).not.toContainText("not extracted")
@@ -328,12 +328,12 @@ test("a verified field shows the human value in the JSON, not the blank machine 
   const json = await page
     .getByLabel("Extracted contract fields as JSON")
     .innerText()
-  expect(json).toContain("Acme Crop, Inc and Northwind Ltd")
+  expect(json).toContain("Northwind Ltd")
 
   // Provenance stays recoverable: both halves are shown side by side.
   await page.getByRole("button", { name: "View details" }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog.getByText("Human verification")).toBeVisible()
-  await expect(dialog).toContainText("Acme Crop, Inc and Northwind Ltd")
+  await expect(dialog).toContainText("Northwind Ltd")
   await expect(dialog).toContainText("Machine value")
 })

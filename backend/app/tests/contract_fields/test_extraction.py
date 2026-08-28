@@ -97,7 +97,7 @@ def test_deterministic_extraction_finds_the_default_fields() -> None:
     fields, status, unresolved, _ = _resolve(list(DEFAULT_FIELD_KEYS))
 
     assert fields["contract_title"] == "Master Services Agreement"
-    assert fields["parties"] == "Acme Corp, Inc.; Northwind Ltd."
+    assert fields["customer"] == "Northwind Ltd."
     assert fields["effective_date"] == "15/01/2026"
     assert fields["term_end_date"] == "14/01/2027"
     assert fields["contract_value"] == "USD 250000.00"
@@ -506,11 +506,11 @@ def test_split_parties_only_splits_when_corroborated(
     assert split_parties(preamble) == expected
 
 
-def test_parties_are_grounded_individually() -> None:
+def test_the_customer_is_grounded_on_its_own() -> None:
     fields, _, _, _ = _resolve(list(DEFAULT_FIELD_KEYS))
 
     # Both names appear in the source element, so both survive grounding.
-    assert fields["parties"] == "Acme Corp, Inc.; Northwind Ltd."
+    assert fields["customer"] == "Northwind Ltd."
 
 
 # --------------------------------------------------------------------------- #
@@ -530,7 +530,7 @@ def test_a_missing_provider_degrades_instead_of_failing(
     document = _document([("paragraph", "An unremarkable page with no fields.")])
 
     proposals = propose_candidates(
-        document, ["contract_title", "parties", "effective_date"], use_provider=True
+        document, ["contract_title", "customer", "effective_date"], use_provider=True
     )
 
     assert proposals.provider_available is False
@@ -557,9 +557,9 @@ def test_provider_unavailable_becomes_a_specific_reason(
 
 
 def test_the_deterministic_pass_needs_no_provider() -> None:
-    candidates = extract_deterministic(_document(), ["contract_title", "parties"])
+    candidates = extract_deterministic(_document(), ["contract_title", "customer"])
 
-    assert set(candidates) == {"contract_title", "parties"}
+    assert set(candidates) == {"contract_title", "customer"}
 
 
 # --------------------------------------------------------------------------- #
@@ -571,3 +571,417 @@ def test_status_transitions() -> None:
     assert next_status(VerificationAction.SAVE) is ExtractionStatus.NEEDS_VERIFICATION
     assert next_status(VerificationAction.APPROVE) is ExtractionStatus.VERIFIED
     assert next_status(VerificationAction.REJECT) is ExtractionStatus.REJECTED
+
+
+# --------------------------------------------------------------------------- #
+# Numbered clauses
+#
+# A real contract numbers its clauses. The value drops that number, gate 1 compares
+# against the whole element and counts it as a changed number, and the field blanked
+# — while the identical unnumbered clause succeeded. The suite had no numbered-clause
+# case at all, which is how it stayed green for three grading rounds.
+# --------------------------------------------------------------------------- #
+
+
+HEADING = ("heading", "MASTER SERVICES AGREEMENT")
+
+
+@pytest.mark.parametrize(
+    "clause",
+    [
+        "Governing Law: State of Delaware",
+        "8. Governing Law: State of Delaware",
+        "8.1 Governing Law: State of Delaware",
+        "8.1.2 Governing Law: State of Delaware",
+        "(a) Governing Law: State of Delaware",
+        "Article 8. Governing Law: State of Delaware",
+        "Section 12 - Governing Law: State of Delaware",
+    ],
+)
+def test_a_numbered_clause_extracts_like_an_unnumbered_one(clause: str) -> None:
+    fields, status, unresolved, _ = _resolve(
+        ["governing_law"], [HEADING, ("paragraph", clause)]
+    )
+
+    assert fields["governing_law"] == "State of Delaware", clause
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
+
+
+@pytest.mark.parametrize(
+    ("clause", "value", "expected"),
+    [
+        # The clause number is dropped; nothing else changed -> keep.
+        ("8. Notice Period: 90 days", "90 days", "90 days"),
+        # A number inside the value really did change -> still blank.
+        ("8. Notice Period: 90 days", "30 days", ""),
+        ("8. Notice Period: 90 days", "900 days", ""),
+        # A negation dropped from the clause -> still blank.
+        ("9. Termination: Neither party may terminate", "may terminate", ""),
+    ],
+)
+def test_dropping_a_clause_number_is_not_a_changed_number(
+    clause: str, value: str, expected: str
+) -> None:
+    """Relaxing the sensitive-mismatch verdict must not relax the check itself.
+
+    `REJECTED_SENSITIVE_MISMATCH` is no longer un-overridable, so gate 2 gets to
+    re-apply the comparison at span scope. A proposal that alters a number, or drops
+    a negation, must still be refused there.
+    """
+
+    from app.contract_fields.grounding import ground_value
+
+    element = ExtractedElement(
+        element_id="e1", type="paragraph", text=clause, reading_order=0
+    )
+    grounded = ground_value("notice_period", value, ["e1"], [element])
+
+    if expected:
+        assert grounded.accepted is True
+        assert grounded.value == expected
+    else:
+        assert grounded.accepted is False
+        assert grounded.value == ""
+
+
+# --------------------------------------------------------------------------- #
+# Label fragments
+#
+# Two patterns can describe the same label with different extents. Taking only the
+# earliest stopped mid-label and handed the remainder back as the value.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("clause", "expected"),
+    [
+        # "Automatic Renewal" (0, 17) overlaps "Renewal Terms" (10, 23): the label is
+        # consumed whole rather than leaving "Terms: ...".
+        ("Automatic Renewal Terms: Renews annually", "Renews annually"),
+        ("Auto-Renewal Terms: Renews annually", "Renews annually"),
+        ("Renewal Terms: Renews annually", "Renews annually"),
+        # A label with no value is not a value.
+        ("Automatic Renewal Terms:", ""),
+        ("Renewal Terms:", ""),
+    ],
+)
+def test_a_label_spelled_two_ways_is_consumed_whole(clause: str, expected: str) -> None:
+    fields, _, _, _ = _resolve(["renewal_terms"], [HEADING, ("paragraph", clause)])
+
+    assert fields["renewal_terms"] == expected, clause
+
+
+def test_a_value_shaped_pattern_after_the_label_is_not_absorbed() -> None:
+    """Extension requires an overlap, so "Net 30" stays outside the label span."""
+
+    fields, _, _, _ = _resolve(
+        ["payment_terms"], [HEADING, ("paragraph", "Payment Terms: Net 30")]
+    )
+
+    assert fields["payment_terms"] == "Net 30"
+
+
+def test_a_disjoint_later_match_is_not_absorbed() -> None:
+    """ "Termination" (0, 11) does not reach "Termination for convenience"."""
+
+    fields, _, _, _ = _resolve(
+        ["termination_clause"],
+        [HEADING, ("paragraph", "Termination: Termination for convenience on notice")],
+    )
+
+    assert fields["termination_clause"] == "Termination for convenience on notice"
+
+
+def test_earliest_label_merges_only_overlapping_spans() -> None:
+    from app.contract_fields.extractor import LABEL_PATTERNS, _earliest_label
+
+    patterns = LABEL_PATTERNS["renewal_terms"]
+    text = "Automatic Renewal Terms: Renews annually"
+
+    assert _earliest_label(text, patterns) == (0, 23)
+    assert text[0:23] == "Automatic Renewal Terms"
+
+    # Nothing matches -> no span.
+    assert _earliest_label("no label here at all", patterns) is None
+
+
+# --------------------------------------------------------------------------- #
+# Word-level OCR
+#
+# Tesseract emits one element per *word*, so a clause arrives as "Renewal",
+# "Terms:", "Automatic", "renewal", ... Both the label and its value are split. The
+# suite only ever exercised paragraph-shaped elements, so the whole class was
+# invisible: the label fragment defect ("Terms:", "Clause:") reached the database.
+# --------------------------------------------------------------------------- #
+
+
+OCR_WORDS = [
+    "MASTER",
+    "SERVICES",
+    "AGREEMENT",
+    "Governing",
+    "Law:",
+    "State",
+    "of",
+    "Delaware.",
+    "Payment",
+    "Terms:",
+    "Net",
+    "30",
+    "days",
+    "from",
+    "invoice",
+    "date.",
+    "Notice",
+    "Period:",
+    "90",
+    "days'",
+    "prior",
+    "written",
+    "notice.",
+    "Renewal",
+    "Terms:",
+    "Automatic",
+    "renewal",
+    "for",
+    "successive",
+    "one",
+    "year",
+    "terms.",
+    "Termination",
+    "Clause:",
+    "Termination",
+    "for",
+    "convenience",
+    "on",
+    "written",
+    "notice.",
+]
+
+
+def _word_lines(words: list[str]) -> list[tuple[str, str]]:
+    return [("paragraph", word) for word in words]
+
+
+@pytest.mark.parametrize(
+    ("field_key", "expected"),
+    [
+        ("governing_law", "State of Delaware."),
+        ("payment_terms", "Net 30 days from invoice date."),
+        ("notice_period", "90 days' prior written notice."),
+        ("renewal_terms", "Automatic renewal for successive one year terms."),
+        ("termination_clause", "Termination for convenience on written notice."),
+    ],
+)
+def test_word_level_ocr_extracts_the_whole_clause(
+    field_key: str, expected: str
+) -> None:
+    fields, status, unresolved, _ = _resolve([field_key], _word_lines(OCR_WORDS))
+
+    assert fields[field_key] == expected
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
+
+
+@pytest.mark.parametrize(
+    "field_key", ["renewal_terms", "termination_clause", "payment_terms"]
+)
+def test_word_level_ocr_never_returns_the_rest_of_the_label(field_key: str) -> None:
+    """The exact defect: "Renewal" then "Terms:" made "Terms:" the value."""
+
+    fields, _, _, _ = _resolve([field_key], _word_lines(OCR_WORDS))
+
+    assert fields[field_key] not in {"Terms:", "Clause:", "Terms", "Clause"}
+    assert not fields[field_key].startswith(("Terms:", "Clause:"))
+
+
+def test_word_level_ocr_survives_numbered_clauses() -> None:
+    """Both defects at once — the shape a real scanned contract actually has."""
+
+    words = [
+        "8.",
+        "Governing",
+        "Law:",
+        "State",
+        "of",
+        "Delaware.",
+        "9.",
+        "Notice",
+        "Period:",
+        "90",
+        "days'",
+        "prior",
+        "written",
+        "notice.",
+    ]
+    fields, status, unresolved, _ = _resolve(
+        ["governing_law", "notice_period"], _word_lines(words)
+    )
+
+    assert fields["governing_law"] == "State of Delaware."
+    assert fields["notice_period"] == "90 days' prior written notice."
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
+
+
+def test_a_clause_stops_at_the_next_clause_heading() -> None:
+    """Gathering must not run past this clause into the following one."""
+
+    fields, _, _, _ = _resolve(["governing_law"], _word_lines(OCR_WORDS))
+
+    assert "Payment" not in fields["governing_law"]
+    assert "Net" not in fields["governing_law"]
+
+
+# --------------------------------------------------------------------------- #
+# Customer — the counterparty, not "the parties"
+#
+# The home organisation is configuration, not something to extract. That removes
+# "how many parties are there" from the extraction path: the answer is one name.
+# --------------------------------------------------------------------------- #
+
+
+PREAMBLE = "This Agreement is made by and between Acme Corp, Inc. and Northwind Ltd."
+
+
+def test_the_customer_is_the_party_that_is_not_the_home_organisation() -> None:
+    fields, status, unresolved, _ = _resolve(
+        ["customer"], [HEADING, ("paragraph", PREAMBLE)]
+    )
+
+    assert fields["customer"] == "Northwind Ltd."
+    assert status is ExtractionStatus.COMPLETE
+    assert unresolved == []
+
+
+def test_the_home_organisation_is_configurable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Flip which side is 'home' and the answer flips with it."""
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "CONTRACT_HOME_ORGANIZATIONS", ["Northwind Ltd"])
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", PREAMBLE)])
+
+    assert fields["customer"] == "Acme Corp, Inc."
+
+
+@pytest.mark.parametrize(
+    "configured",
+    [
+        "Acme Corp, Inc.",  # exactly as written
+        "Acme Corp",  # without the corporate suffix
+        "ACME CORP, INC.",  # different case
+        "Acme Corp Inc",  # without punctuation
+    ],
+)
+def test_home_organisation_matching_survives_how_it_is_written(
+    configured: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One company is written several ways across a contract; none may decide
+    identity, or the home organisation leaks into the customer field."""
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "CONTRACT_HOME_ORGANIZATIONS", [configured])
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", PREAMBLE)])
+
+    assert fields["customer"] == "Northwind Ltd.", configured
+
+
+def test_an_unconfigured_alias_is_treated_as_the_counterparty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The failure mode is visible, not silent: an alias nobody configured shows up
+    as the customer for a human to correct, rather than being dropped."""
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "CONTRACT_HOME_ORGANIZATIONS", ["Globex"])
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", PREAMBLE)])
+
+    # Two non-home parties is unresolved, not a guess between them.
+    assert fields["customer"] == ""
+
+
+def test_a_contract_with_only_the_home_organisation_has_no_customer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import settings
+
+    monkeypatch.setattr(
+        settings, "CONTRACT_HOME_ORGANIZATIONS", ["Acme Corp, Inc.", "Northwind Ltd"]
+    )
+    fields, status, unresolved, _ = _resolve(
+        ["customer"], [HEADING, ("paragraph", PREAMBLE)]
+    )
+
+    assert fields["customer"] == ""
+    assert status is ExtractionStatus.NEEDS_VERIFICATION
+    assert [entry.field_key for entry in unresolved] == ["customer"]
+
+
+def test_the_customer_name_is_never_rewritten() -> None:
+    """Grounding requires the value to be a substring of its source element, so a
+    tidied-up legal name would stop being groundable."""
+
+    preamble = (
+        "This Agreement is made by and between Acme Corp, Inc. and "
+        'Grupo Éxito, S.A. ("Supplier").'
+    )
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", preamble)])
+
+    assert fields["customer"].startswith("Grupo Éxito, S.A.")
+
+
+def test_the_customer_is_found_when_the_preamble_will_not_split() -> None:
+    """An unrecognised corporate suffix leaves the preamble as one string, which
+    *contains* the home name and so reads as the home organisation. Locating the
+    configured name and taking the other side recovers it."""
+
+    preamble = (
+        "This Agreement is made by and between Acme Corp, Inc. and "
+        'Grupo Éxito, S.A. ("Supplier").'
+    )
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", preamble)])
+
+    assert fields["customer"] == 'Grupo Éxito, S.A. ("Supplier")'
+
+
+def test_the_home_name_is_matched_without_its_corporate_suffix() -> None:
+    """Configured "Acme Corp, Inc."; the preamble says "Acme Corp"."""
+
+    preamble = "This Agreement is made by and between Acme Corp and Smith and Wesson."
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", preamble)])
+
+    # "Smith and Wesson" stays one entity — the normalizer still never splits.
+    assert fields["customer"] == "Smith and Wesson"
+
+
+def test_the_home_name_does_not_match_a_longer_word() -> None:
+    """ "Acme Corp" must not match inside "Acme Corporation" and leave "oration"."""
+
+    preamble = "This Agreement is made by and between Acme Corporation and Globex Ltd."
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", preamble)])
+
+    assert "oration" not in fields["customer"]
+
+
+@pytest.mark.parametrize(
+    "preamble",
+    [
+        "This Agreement is made by and between Acme Corp, Inc. and Northwind Ltd.",
+        "This Agreement is made by and between Northwind Ltd and Acme Corp, Inc.",
+        'This Agreement is made by and between Acme Corp, Inc. and Grupo Éxito, S.A. ("Supplier").',
+    ],
+)
+def test_the_customer_value_is_always_a_span_of_its_source(preamble: str) -> None:
+    """Whichever route produced it, the value must remain a substring of the source
+    element — a stitched-together name cannot be grounded."""
+
+    fields, _, _, _ = _resolve(["customer"], [HEADING, ("paragraph", preamble)])
+
+    assert fields["customer"]
+    assert fields["customer"] in preamble
