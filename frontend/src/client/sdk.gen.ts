@@ -4,10 +4,63 @@ import type { CancelablePromise } from "./core/CancelablePromise"
 import { OpenAPI } from "./core/OpenAPI"
 import { request as __request } from "./core/request"
 import type {
+  BlogListPostsData,
+  BlogListPostsResponse,
+  BlogCreatePostData,
+  BlogCreatePostResponse,
+  BlogListAllPostsData,
+  BlogListAllPostsResponse,
+  BlogGetPostData,
+  BlogGetPostResponse,
+  BlogUpdatePostData,
+  BlogUpdatePostResponse,
+  BlogDeletePostData,
+  BlogDeletePostResponse,
+  ContractExtractionsGetFieldCatalogueResponse,
+  ContractExtractionsListRecordsData,
+  ContractExtractionsListRecordsResponse,
+  ContractExtractionsCreateContractExtractionData,
+  ContractExtractionsCreateContractExtractionResponse,
+  ContractExtractionsGetContractExtractionData,
+  ContractExtractionsGetContractExtractionResponse,
+  ContractExtractionsVerifyContractExtractionData,
+  ContractExtractionsVerifyContractExtractionResponse,
+  ContractExtractionsGetContractExtractionSourceData,
+  ContractExtractionsGetContractExtractionSourceResponse,
+  DocumentExtractionsGetCapabilitiesResponse,
+  DocumentExtractionsCreateDocumentExtractionData,
+  DocumentExtractionsCreateDocumentExtractionResponse,
+  DocumentExtractionsListDocumentExtractionApiKeysResponse,
+  DocumentExtractionsCreateDocumentExtractionApiKeyData,
+  DocumentExtractionsCreateDocumentExtractionApiKeyResponse,
+  DocumentExtractionsRevokeDocumentExtractionApiKeyData,
+  DocumentExtractionsRevokeDocumentExtractionApiKeyResponse,
+  DocumentExtractionsRotateDocumentExtractionApiKeyData,
+  DocumentExtractionsRotateDocumentExtractionApiKeyResponse,
+  DocumentExtractionsCreateProgrammaticDocumentExtractionData,
+  DocumentExtractionsCreateProgrammaticDocumentExtractionResponse,
+  DocumentExtractionsGetProgrammaticDocumentExtractionData,
+  DocumentExtractionsGetProgrammaticDocumentExtractionResponse,
+  DocumentExtractionsGetDocumentExtractionData,
+  DocumentExtractionsGetDocumentExtractionResponse,
+  DocumentExtractionsDeleteDocumentExtractionData,
+  DocumentExtractionsDeleteDocumentExtractionResponse,
+  DocumentExtractionsExportDocumentExtractionData,
+  DocumentExtractionsExportDocumentExtractionResponse,
+  DocumentExtractionsGetDocumentSourceData,
+  DocumentExtractionsGetDocumentSourceResponse,
+  DocumentExtractionsGetDocumentPagePreviewData,
+  DocumentExtractionsGetDocumentPagePreviewResponse,
+  DocumentExtractionsReviewDocumentPageData,
+  DocumentExtractionsReviewDocumentPageResponse,
+  DocumentExtractionsReprocessDocumentPageData,
+  DocumentExtractionsReprocessDocumentPageResponse,
   FilesProcessDocumentInvoiceData,
   FilesProcessDocumentInvoiceResponse,
   GptfilesOcrEndpointData,
   GptfilesOcrEndpointResponse,
+  GptfilesOcrJsonEndpointData,
+  GptfilesOcrJsonEndpointResponse,
   ItemsReadItemsData,
   ItemsReadItemsResponse,
   ItemsCreateItemData,
@@ -27,8 +80,18 @@ import type {
   LoginResetPasswordResponse,
   LoginRecoverPasswordHtmlContentData,
   LoginRecoverPasswordHtmlContentResponse,
+  OauthOauthLoginData,
+  OauthOauthLoginResponse,
+  OauthOauthCallbackData,
+  OauthOauthCallbackResponse,
   PrivateCreateUserData,
   PrivateCreateUserResponse,
+  ProfileGetProfileImageMetaResponse,
+  ProfileGetProfileImageResponse,
+  ProfileUploadProfileImageData,
+  ProfileUploadProfileImageResponse,
+  ProfileDeleteProfileImageResponse,
+  ProfileChatProfileChatResponse,
   UploadfilesUploadFileTsData,
   UploadfilesUploadFileTsResponse,
   UploadfilesUploadFileTsppData,
@@ -55,6 +118,621 @@ import type {
   UtilsTestEmailResponse,
   UtilsHealthCheckResponse,
 } from "./types.gen"
+
+export class BlogService {
+  /**
+   * List Posts
+   * @param data The data for the request.
+   * @param data.skip
+   * @param data.limit
+   * @returns BlogPostsPublic Successful Response
+   * @throws ApiError
+   */
+  public static listPosts(
+    data: BlogListPostsData = {},
+  ): CancelablePromise<BlogListPostsResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/blog/posts",
+      query: {
+        skip: data.skip,
+        limit: data.limit,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Create Post
+   * @param data The data for the request.
+   * @param data.requestBody
+   * @returns BlogPostPublic Successful Response
+   * @throws ApiError
+   */
+  public static createPost(
+    data: BlogCreatePostData,
+  ): CancelablePromise<BlogCreatePostResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/blog/posts",
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * List All Posts
+   * @param data The data for the request.
+   * @param data.skip
+   * @param data.limit
+   * @returns BlogPostsPublic Successful Response
+   * @throws ApiError
+   */
+  public static listAllPosts(
+    data: BlogListAllPostsData = {},
+  ): CancelablePromise<BlogListAllPostsResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/blog/posts/all",
+      query: {
+        skip: data.skip,
+        limit: data.limit,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Post
+   * @param data The data for the request.
+   * @param data.slug
+   * @returns BlogPostPublic Successful Response
+   * @throws ApiError
+   */
+  public static getPost(
+    data: BlogGetPostData,
+  ): CancelablePromise<BlogGetPostResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/blog/posts/{slug}",
+      path: {
+        slug: data.slug,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Update Post
+   * @param data The data for the request.
+   * @param data.slug
+   * @param data.requestBody
+   * @returns BlogPostPublic Successful Response
+   * @throws ApiError
+   */
+  public static updatePost(
+    data: BlogUpdatePostData,
+  ): CancelablePromise<BlogUpdatePostResponse> {
+    return __request(OpenAPI, {
+      method: "PUT",
+      url: "/api/v1/blog/posts/{slug}",
+      path: {
+        slug: data.slug,
+      },
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Delete Post
+   * @param data The data for the request.
+   * @param data.slug
+   * @returns Message Successful Response
+   * @throws ApiError
+   */
+  public static deletePost(
+    data: BlogDeletePostData,
+  ): CancelablePromise<BlogDeletePostResponse> {
+    return __request(OpenAPI, {
+      method: "DELETE",
+      url: "/api/v1/blog/posts/{slug}",
+      path: {
+        slug: data.slug,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+}
+
+export class ContractExtractionsService {
+  /**
+   * Get Field Catalogue
+   * The ten-field schema, plus which five the picker starts with selected.
+   *
+   * Served from the backend catalogue so the frontend never keeps a second copy.
+   * @returns FieldCatalogueResponse Successful Response
+   * @throws ApiError
+   */
+  public static getFieldCatalogue(): CancelablePromise<ContractExtractionsGetFieldCatalogueResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/contract-extractions/fields",
+    })
+  }
+
+  /**
+   * List Records
+   * One owner-scoped page of the table, filterable by status.
+   * @param data The data for the request.
+   * @param data.extractionStatus
+   * @param data.skip
+   * @param data.limit
+   * @returns ContractFieldsPage Successful Response
+   * @throws ApiError
+   */
+  public static listRecords(
+    data: ContractExtractionsListRecordsData = {},
+  ): CancelablePromise<ContractExtractionsListRecordsResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/contract-extractions/records",
+      query: {
+        extraction_status: data.extractionStatus,
+        skip: data.skip,
+        limit: data.limit,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Create Contract Extraction
+   * Upload a contract, get the ten-key JSON, and persist exactly one row.
+   *
+   * A result whose requested fields did not all resolve comes back **200** with
+   * `extraction_status="needs_verification"`: it is a business outcome, not a
+   * transport error, and the row is what the human works from.
+   * @param data The data for the request.
+   * @param data.formData
+   * @returns ContractFieldResult Successful Response
+   * @throws ApiError
+   */
+  public static createContractExtraction(
+    data: ContractExtractionsCreateContractExtractionData,
+  ): CancelablePromise<ContractExtractionsCreateContractExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/contract-extractions",
+      formData: data.formData,
+      mediaType: "multipart/form-data",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Contract Extraction
+   * @param data The data for the request.
+   * @param data.extractionId
+   * @returns ContractFieldResult Successful Response
+   * @throws ApiError
+   */
+  public static getContractExtraction(
+    data: ContractExtractionsGetContractExtractionData,
+  ): CancelablePromise<ContractExtractionsGetContractExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/contract-extractions/{extraction_id}",
+      path: {
+        extraction_id: data.extractionId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Verify Contract Extraction
+   * Save, approve, or reject a human verification.
+   *
+   * `values` accepts requested keys only. `approve` is refused while any unresolved
+   * field would still be blank — a human cannot approve an incomplete result. The
+   * ten machine columns are never overwritten; corrections live in `verified_values`.
+   * @param data The data for the request.
+   * @param data.extractionId
+   * @param data.requestBody
+   * @returns ContractFieldResult Successful Response
+   * @throws ApiError
+   */
+  public static verifyContractExtraction(
+    data: ContractExtractionsVerifyContractExtractionData,
+  ): CancelablePromise<ContractExtractionsVerifyContractExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "PATCH",
+      url: "/api/v1/contract-extractions/{extraction_id}/verify",
+      path: {
+        extraction_id: data.extractionId,
+      },
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Contract Extraction Source
+   * The stored source document for the left-hand pane.
+   * @param data The data for the request.
+   * @param data.extractionId
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static getContractExtractionSource(
+    data: ContractExtractionsGetContractExtractionSourceData,
+  ): CancelablePromise<ContractExtractionsGetContractExtractionSourceResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/contract-extractions/{extraction_id}/source",
+      path: {
+        extraction_id: data.extractionId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+}
+
+export class DocumentExtractionsService {
+  /**
+   * Get Capabilities
+   * @returns CapabilityResponse Successful Response
+   * @throws ApiError
+   */
+  public static getCapabilities(): CancelablePromise<DocumentExtractionsGetCapabilitiesResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/capabilities",
+    })
+  }
+
+  /**
+   * Create Document Extraction
+   * @param data The data for the request.
+   * @param data.formData
+   * @returns DocumentResult Successful Response
+   * @throws ApiError
+   */
+  public static createDocumentExtraction(
+    data: DocumentExtractionsCreateDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsCreateDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/document-extractions",
+      formData: data.formData,
+      mediaType: "multipart/form-data",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * List Document Extraction Api Keys
+   * @returns ApiKeyMetadata Successful Response
+   * @throws ApiError
+   */
+  public static listDocumentExtractionApiKeys(): CancelablePromise<DocumentExtractionsListDocumentExtractionApiKeysResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/api-keys",
+    })
+  }
+
+  /**
+   * Create Document Extraction Api Key
+   * Create an API key; the plaintext value is returned exactly once.
+   * @param data The data for the request.
+   * @param data.requestBody
+   * @returns ApiKeyCreated Successful Response
+   * @throws ApiError
+   */
+  public static createDocumentExtractionApiKey(
+    data: DocumentExtractionsCreateDocumentExtractionApiKeyData,
+  ): CancelablePromise<DocumentExtractionsCreateDocumentExtractionApiKeyResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/document-extractions/api-keys",
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Revoke Document Extraction Api Key
+   * @param data The data for the request.
+   * @param data.keyId
+   * @returns void Successful Response
+   * @throws ApiError
+   */
+  public static revokeDocumentExtractionApiKey(
+    data: DocumentExtractionsRevokeDocumentExtractionApiKeyData,
+  ): CancelablePromise<DocumentExtractionsRevokeDocumentExtractionApiKeyResponse> {
+    return __request(OpenAPI, {
+      method: "DELETE",
+      url: "/api/v1/document-extractions/api-keys/{key_id}",
+      path: {
+        key_id: data.keyId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Rotate Document Extraction Api Key
+   * @param data The data for the request.
+   * @param data.keyId
+   * @returns ApiKeyCreated Successful Response
+   * @throws ApiError
+   */
+  public static rotateDocumentExtractionApiKey(
+    data: DocumentExtractionsRotateDocumentExtractionApiKeyData,
+  ): CancelablePromise<DocumentExtractionsRotateDocumentExtractionApiKeyResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/document-extractions/api-keys/{key_id}/rotate",
+      path: {
+        key_id: data.keyId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Create Programmatic Document Extraction
+   * @param data The data for the request.
+   * @param data.formData
+   * @param data.xApiKey
+   * @returns DocumentResult Successful Response
+   * @throws ApiError
+   */
+  public static createProgrammaticDocumentExtraction(
+    data: DocumentExtractionsCreateProgrammaticDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsCreateProgrammaticDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/document-extractions/programmatic",
+      headers: {
+        "x-api-key": data.xApiKey,
+      },
+      formData: data.formData,
+      mediaType: "multipart/form-data",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Programmatic Document Extraction
+   * @param data The data for the request.
+   * @param data.documentId
+   * @param data.xApiKey
+   * @returns DocumentResult Successful Response
+   * @throws ApiError
+   */
+  public static getProgrammaticDocumentExtraction(
+    data: DocumentExtractionsGetProgrammaticDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsGetProgrammaticDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/programmatic/{document_id}",
+      path: {
+        document_id: data.documentId,
+      },
+      headers: {
+        "x-api-key": data.xApiKey,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Document Extraction
+   * @param data The data for the request.
+   * @param data.documentId
+   * @returns DocumentResult Successful Response
+   * @throws ApiError
+   */
+  public static getDocumentExtraction(
+    data: DocumentExtractionsGetDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsGetDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/{document_id}",
+      path: {
+        document_id: data.documentId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Delete Document Extraction
+   * @param data The data for the request.
+   * @param data.documentId
+   * @returns void Successful Response
+   * @throws ApiError
+   */
+  public static deleteDocumentExtraction(
+    data: DocumentExtractionsDeleteDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsDeleteDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "DELETE",
+      url: "/api/v1/document-extractions/{document_id}",
+      path: {
+        document_id: data.documentId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Export Document Extraction
+   * @param data The data for the request.
+   * @param data.documentId
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static exportDocumentExtraction(
+    data: DocumentExtractionsExportDocumentExtractionData,
+  ): CancelablePromise<DocumentExtractionsExportDocumentExtractionResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/{document_id}/export",
+      path: {
+        document_id: data.documentId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Document Source
+   * @param data The data for the request.
+   * @param data.documentId
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static getDocumentSource(
+    data: DocumentExtractionsGetDocumentSourceData,
+  ): CancelablePromise<DocumentExtractionsGetDocumentSourceResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/{document_id}/source",
+      path: {
+        document_id: data.documentId,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Get Document Page Preview
+   * @param data The data for the request.
+   * @param data.documentId
+   * @param data.pageNumber
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static getDocumentPagePreview(
+    data: DocumentExtractionsGetDocumentPagePreviewData,
+  ): CancelablePromise<DocumentExtractionsGetDocumentPagePreviewResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/document-extractions/{document_id}/pages/{page_number}/preview",
+      path: {
+        document_id: data.documentId,
+        page_number: data.pageNumber,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Review Document Page
+   * @param data The data for the request.
+   * @param data.documentId
+   * @param data.pageNumber
+   * @param data.requestBody
+   * @returns PageResult Successful Response
+   * @throws ApiError
+   */
+  public static reviewDocumentPage(
+    data: DocumentExtractionsReviewDocumentPageData,
+  ): CancelablePromise<DocumentExtractionsReviewDocumentPageResponse> {
+    return __request(OpenAPI, {
+      method: "PATCH",
+      url: "/api/v1/document-extractions/{document_id}/pages/{page_number}/review",
+      path: {
+        document_id: data.documentId,
+        page_number: data.pageNumber,
+      },
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Reprocess Document Page
+   * @param data The data for the request.
+   * @param data.documentId
+   * @param data.pageNumber
+   * @param data.requestBody
+   * @returns PageResult Successful Response
+   * @throws ApiError
+   */
+  public static reprocessDocumentPage(
+    data: DocumentExtractionsReprocessDocumentPageData,
+  ): CancelablePromise<DocumentExtractionsReprocessDocumentPageResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/document-extractions/{document_id}/pages/{page_number}/reprocess",
+      path: {
+        document_id: data.documentId,
+        page_number: data.pageNumber,
+      },
+      body: data.requestBody,
+      mediaType: "application/json",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+}
 
 export class FilesService {
   /**
@@ -104,6 +782,33 @@ export class GptfilesService {
     return __request(OpenAPI, {
       method: "POST",
       url: "/api/v1/gptfiles/ocr",
+      formData: data.formData,
+      mediaType: "multipart/form-data",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Ocr Json Endpoint
+   * Perform OCR on a provided PDF/image file and return the extracted content
+   * as a dynamic, hierarchical JSON object whose structure is determined by
+   * the document type (invoice, bill, passport, driving licence, etc.).
+   *
+   * Returns:
+   * OCRJsonResponse: ``document_type`` (str) + ``data`` (nested dict).
+   * @param data The data for the request.
+   * @param data.formData
+   * @returns OCRJsonResponse Successful Response
+   * @throws ApiError
+   */
+  public static ocrJsonEndpoint(
+    data: GptfilesOcrJsonEndpointData = {},
+  ): CancelablePromise<GptfilesOcrJsonEndpointResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/gptfiles/ocr-json",
       formData: data.formData,
       mediaType: "multipart/form-data",
       errors: {
@@ -339,6 +1044,64 @@ export class LoginService {
   }
 }
 
+export class OauthService {
+  /**
+   * Oauth Login
+   * @param data The data for the request.
+   * @param data.provider
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static oauthLogin(
+    data: OauthOauthLoginData,
+  ): CancelablePromise<OauthOauthLoginResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/login/{provider}",
+      path: {
+        provider: data.provider,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Oauth Callback
+   * @param data The data for the request.
+   * @param data.provider
+   * @param data.code
+   * @param data.state
+   * @param data.error
+   * @param data.oauthState
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static oauthCallback(
+    data: OauthOauthCallbackData,
+  ): CancelablePromise<OauthOauthCallbackResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/login/{provider}/callback",
+      path: {
+        provider: data.provider,
+      },
+      cookies: {
+        oauth_state: data.oauthState,
+      },
+      query: {
+        code: data.code,
+        state: data.state,
+        error: data.error,
+      },
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+}
+
 export class PrivateService {
   /**
    * Create User
@@ -359,6 +1122,89 @@ export class PrivateService {
       errors: {
         422: "Validation Error",
       },
+    })
+  }
+}
+
+export class ProfileService {
+  /**
+   * Get Profile Image Meta
+   * Public: whether a headshot exists, and when it last changed.
+   *
+   * The profile page uses this to choose between the photo and the initials
+   * placeholder, and to cache-bust the image URL after an upload.
+   * @returns ProfileImageMeta Successful Response
+   * @throws ApiError
+   */
+  public static getProfileImageMeta(): CancelablePromise<ProfileGetProfileImageMetaResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/profile/image/meta",
+    })
+  }
+
+  /**
+   * Get Profile Image
+   * Public: the raw headshot bytes.
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static getProfileImage(): CancelablePromise<ProfileGetProfileImageResponse> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: "/api/v1/profile/image",
+      errors: {
+        404: "Not Found",
+      },
+    })
+  }
+
+  /**
+   * Upload Profile Image
+   * Superuser-only: replace the headshot.
+   * @param data The data for the request.
+   * @param data.formData
+   * @returns ProfileImageMeta Successful Response
+   * @throws ApiError
+   */
+  public static uploadProfileImage(
+    data: ProfileUploadProfileImageData,
+  ): CancelablePromise<ProfileUploadProfileImageResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/profile/image",
+      formData: data.formData,
+      mediaType: "multipart/form-data",
+      errors: {
+        422: "Validation Error",
+      },
+    })
+  }
+
+  /**
+   * Delete Profile Image
+   * Superuser-only: remove the headshot, reverting to the initials ring.
+   * @returns Message Successful Response
+   * @throws ApiError
+   */
+  public static deleteProfileImage(): CancelablePromise<ProfileDeleteProfileImageResponse> {
+    return __request(OpenAPI, {
+      method: "DELETE",
+      url: "/api/v1/profile/image",
+    })
+  }
+}
+
+export class ProfileChatService {
+  /**
+   * Profile Chat
+   * @returns unknown Successful Response
+   * @throws ApiError
+   */
+  public static profileChat(): CancelablePromise<ProfileChatProfileChatResponse> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/v1/profile-chat/",
     })
   }
 }

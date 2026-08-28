@@ -3,10 +3,33 @@
 Full-stack app: FastAPI backend + Next.js 15 (App Router) frontend.
 
 ## Run locally
+
+Whole stack in one shot — db, backend, frontend, migrations and superuser seeding:
 ```bash
-cd frontend && npm run dev            # Next.js on :3000
-docker compose up -d                  # backend + db (FastAPI on :8000)
+docker compose up -d --wait           # frontend :3000, backend :8000, db :5434
 ```
+`--wait` returns only once all three report healthy. Ordering is enforced by
+healthchecks: backend waits for a healthy db, frontend waits for a healthy backend
+(so the UI is never served before `prestart.sh` has run migrations and seeded the
+first superuser). Both app services are `pull_policy: build`, so `up` always builds
+the working tree rather than silently reusing a stale image.
+
+Ports 3000/8000/5434 must be free — stop any `npm run dev` / `uvicorn` first.
+
+Hot-reload development instead (source-synced containers):
+```bash
+docker compose watch
+```
+
+Or run the app processes on the host against the Dockerized db:
+```bash
+docker compose up -d db
+cd frontend && npm run dev
+cd backend && POSTGRES_SERVER=localhost POSTGRES_PORT=5434 .venv/bin/uvicorn app.main:app
+```
+The `POSTGRES_*` overrides are required on the host: `.env` points `POSTGRES_SERVER`
+at the remote Render database. Inside compose this is handled already — the override
+file sets `POSTGRES_SERVER: db`.
 
 ## Stack & conventions
 - **Frontend**: Next.js 15 App Router, shadcn/ui + Tailwind v3, TanStack Query v5, react-hook-form, sonner toasts, lucide-react icons.
@@ -43,6 +66,46 @@ The live rebuild may freely rewrite `components/profile/*` and `lib/profile-data
 **Model policy for the build loop:** orchestrator (main session) runs on **Fable 5**; both subagents (`profile-page-builder`, `profile-page-grader`) run on **Opus** via `model: opus` in their frontmatter — never pass a `model` override when spawning them.
 
 **Autonomous-execution guardrails (all agents, no babysitting):** commands that are read-only or scoped to this project folder / the session scratchpad and reversible via git are acceptable — decide and continue without asking the user. Forbidden everywhere: `sudo`, `rm -rf`, mutating git commands (commit/push/reset/checkout/clean), force flags, remote-script execution (`curl | sh`), destructive docker/db operations, killing processes you didn't start, writes outside the project folder, editing `.env*` secrets. If blocked by these rules, report BLOCKED — don't work around the guardrail and don't ask mid-run. Every role has an explicit **definition of done** in its agent/skill file — a run isn't done until those boxes are ticked and reported.
+
+## Active initiative: Contract field extraction (spec finalized, build not started)
+
+Requirement: `docs/contract_extraction.md`. Adds an operator-facing **field-extraction** layer on top of the existing visual document extractor — upload a contract, pick fields, get a strict 10-key JSON, persist a row, browse the table, and verify failures by hand.
+
+Skills define the whole thing — **load them before touching this feature**:
+- `.claude/skills/contract-field-extraction/SKILL.md` — the binding spec: field catalogue, 10-key JSON contract, grounding rules, the failure/verification model, backend module layout, API surface, DB table, frontend behaviour, tests, definition of done.
+- `.claude/skills/contract-extraction-orchestrator/SKILL.md` — the 4-phase build workflow; `contract-extraction-builder` implements, `contract-extraction-grader` verifies with a regression-gated rubric, max 3 rounds per phase plus no-progress and regression stops.
+
+Decisions confirmed by Pradeep (2026-08-26), binding:
+- **The schema is exactly 10 fields, no larger catalogue.** Default-selected 5: `contract_title`, `parties`, `effective_date`, `term_end_date`, `contract_value`. The other 5: `governing_law`, `payment_terms`, `notice_period`, `renewal_terms`, `termination_clause`.
+- **All 10 are individually selectable and deselectable (revised 2026-08-27, supersedes the "fixed 5" rule).** The first five are only the picker's *default* selection — every one can be moved out. A valid selection is any **non-empty** subset of the 10: one field is enough, and it is extracted while the other nine come back blank. An **empty selection is a 422**, and the UI disables Extract before it can be submitted. Requested = exactly what was selected; nothing is implicit.
+- **New route + new module**, not an extension of the existing one: `frontend/app/(protected)/contract-extraction/` and `backend/app/contract_fields/` + `backend/app/api/routes/contract_extractions.py` (`/api/v1/contract-extractions`).
+- **Storage**: one new table `contract_field_extraction` in the **existing** Dockerized Postgres (`db` service, host 5434) — no second container.
+- **Table shape**: **10 real named columns**, one per field, `NOT NULL DEFAULT ''` — the table maps one-to-one onto the JSON (10 keys, 10 columns, same names). No name/value pairs, no JSON blob for the optional half. Plus `selected_fields` (JSON) so a blank that was never requested is distinguishable from one that was extracted and not found.
+- **A blank requested field is a failure requiring human verification.** Requested = exactly the fields the operator selected. **One** blank requested field sets `extraction_status = needs_verification`, lists the keys and reasons in `unresolved_fields`, and surfaces the record in the UI behind a non-dismissible banner plus a verification view beside the document. A blank in an **unselected** optional field is expected and never a failure. A `needs_verification` result still persists and still returns 200 — it is a business outcome, not a transport error. Human corrections go to `verified_values`; the 10 machine columns are never overwritten, mirroring how the existing pipeline keeps review corrections separate from parser text.
+
+**Non-disruption is the top constraint.** `backend/app/visual_document_extractor/**`, `backend/app/api/routes/document_extractions.py`, `frontend/components/document-extractions/**`, the legacy OCR modules, and all existing tables are **read-only** for this work. The verification layer *extends* the existing pipeline's review vocabulary (`PageStatus`, `ReviewStatus`, `ReviewState`, `AuditEvent`) by importing and mirroring it in the new module — never by editing that package. The only shared files that may change: `api/main.py` (one router line), `models.py` (append table), `core/config.py` (append settings), one Alembic revision, `middleware.ts`, the nav component, and the regenerated client. Needing more means reporting BLOCKED.
+
+**Blank beats a guess:** a field that can't be grounded in extracted elements or normalized is `""` — never `null`, never a missing key, never an invented value. The JSON always carries **the same 10 keys in the same order**, whatever the operator selected; the key set is static, so no placeholder slot names are ever needed. Blank is still never a guess — it is now an outcome that raises the record for a human rather than passing quietly.
+
+**Status (2026-08-27):** All 4 phases built. Phase 1 **PASS 92**, Phase 2 **PASS 91**, Phase 3 **89, all four gates pass**; Phase 4 (frontend) built but **never graded**. Backend suite: 445 passed, 25 skipped; frontend Playwright 5 passed; tsc/biome/ruff/mypy clean. Nothing committed — all in the working tree.
+
+Migrations applied to the local Docker Postgres: `e7f8a9b0c1d2` (create table), then `b9c0d1e2f3a4` (rename `selected_optional_fields` → `selected_fields` and backfill pre-existing rows with the five formerly-implicit keys, so their recorded scope still matches how they were extracted).
+
+Changes made after Phase 4, at Pradeep's request:
+1. **JSON panel shows verified values.** The panel read the machine columns, so an approved human correction still displayed `""` and stayed flagged as a failure. It now renders *effective* values (verified where present), Copy JSON matches, and "View details" gained a Human verification section showing human and machine value side by side. The 10 machine columns are still never overwritten.
+2. **Dual-list field picker** (`field-transfer.tsx`) replaced the combobox: available left, selected right, move one or the whole set either way. `field-combobox.tsx` was deleted.
+3. **The "fixed 5" rule was reversed** — see the schema bullets above.
+
+**Running the app:** `docker compose up -d --wait` brings up db + backend + frontend, all healthy, with migrations and superuser seeding done. Ports 3000/8000/5434 must be free.
+
+**Deferred, agreed with Pradeep (2026-08-27) — fix after the frontend is reviewed:**
+1. **BLOCKER — numbered clauses blank the field.** `"8. Governing Law: State of Delaware"` → `""` while the unnumbered form works; on a realistically numbered contract 8 of 10 fields come back blank. Cause: `verify_candidate`'s `_SENSITIVE` counts the dropped clause number as a changed number → `REJECTED_SENSITIVE_MISMATCH`, which `grounding.py` puts in `NEVER_OVERRIDABLE`, so gate 2 never runs and the span-scoped sensitive re-check is dead code for the one verdict it was written for. **Verified fix:** remove `REJECTED_SENSITIVE_MISMATCH` from `NEVER_OVERRIDABLE` (keep `REJECTED_INVALID_REFERENCE` and `REJECTED_OVERLAP`); the grader confirmed by monkeypatch that all four numbered-clause cases then accept, all 13 defect cases still refuse, and all 228 tests still pass. Needs a regression test for `"8. Governing Law: …"` — the suite has zero numbered-clause coverage, which is why this stayed green for three rounds.
+2. Residual carve-out phrasings outside the `_NEGATION` blacklist (`to the extent that`, `so long as`, `only if`, `apart from`, `with the exception of`, bare `save`) let a truncated excerpt through, e.g. `"renews annually, at the option of the Customer"` → `"The Agreement renews annually"`. Verbatim source text, not an invention; lands as `NEEDS_REVIEW`. Cheap to add those tokens; do not chase exhaustiveness.
+3. `UnresolvedField.detail` is always `None` over the wire — the specific reason text lives only in `warnings`, so the UI's per-row reason shows the bare enum.
+
+**Note:** the `OPENAI_API_KEY` in `.env` is **live again** (confirmed `200 OK` from `/v1/chat/completions`), so the LLM extraction path is real and billable. `test_api.py` was making 10 live calls per run; it now stubs `extract_with_provider` (suite runtime 7.9s → 0.21s, zero outbound traffic).
+
+**⚠️ `.env` points `POSTGRES_SERVER` at a remote Render Postgres.** A plain `alembic upgrade head` in this repo applies DDL to that remote database, not the local Docker one. For local work pass `POSTGRES_SERVER=localhost POSTGRES_PORT=5434` (env vars override `.env`), which is how the migration was applied.
 
 ## House rules
 - Don't start servers with `dangerouslyDisableSandbox` unless a command genuinely needs network/ports.

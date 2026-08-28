@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     blog,
+    contract_extractions,
     document_extractions,
     extractorg,
     extractorgpt,
@@ -30,6 +31,7 @@ api_router.include_router(blog.router)
 api_router.include_router(profile_chat.router)
 api_router.include_router(profile_image.router)
 api_router.include_router(document_extractions.router)
+api_router.include_router(contract_extractions.router)
 
 
 if settings.ENVIRONMENT == "local":

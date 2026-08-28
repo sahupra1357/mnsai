@@ -9,6 +9,7 @@ const PROTECTED_PATHS = [
   "/settings",
   "/extractor",
   "/document-extractions",
+  "/contract-extraction",
   "/solutions",
 ]
 

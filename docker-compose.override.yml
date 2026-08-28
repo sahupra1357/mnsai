@@ -88,9 +88,14 @@ services:
             - .venv
         - path: ./backend/pyproject.toml
           action: rebuild
+    # Always build from the working tree: `up` reuses an existing image otherwise,
+    # which silently runs stale code after a source change.
+    pull_policy: build
     # TODO: remove once coverage is done locally
+    # NOTE: this had a third `:/app/config/...` segment, which is not valid short
+    # syntax for a bind mount — Compose parsed it as an access mode and dropped it.
     volumes:
-      - ./backend/htmlcov:/app/htmlcov:/app/config/application_default_credentials.json
+      - ./backend/htmlcov:/app/htmlcov
     environment:
       # Point the backend at the local Dockerized Postgres (service name "db")
       # instead of the external host in .env. Creds still come from .env.
@@ -112,9 +117,24 @@ services:
     restart: "no"
     ports:
       - "3000:3000"
+    # The backend runs migrations and seeds the first superuser in prestart, so the
+    # UI is only usable once that has finished — not merely once the container exists.
+    depends_on:
+      backend:
+        condition: service_healthy
+    pull_policy: build
     environment:
       - BACKEND_URL=http://backend:8000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+    # node:20-alpine has busybox wget, not curl. Must be 127.0.0.1, not localhost:
+    # the container resolves localhost to ::1 first and the server binds IPv4 only,
+    # so a localhost probe gets connection-refused against a perfectly healthy app.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     build:
       context: ./frontend
       args:

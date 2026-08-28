@@ -58,6 +58,12 @@ const NAV_ITEMS: Array<NavItem> = [
         subLabel: "Match your resume to any job description",
         href: "/solutions/ats-resume-matcher",
       },
+      {
+        label: "Contract Field Extraction",
+        subLabel:
+          "Pull 10 key contract fields to JSON, verify blanks, and store the row",
+        href: "/contract-extraction",
+      },
     ],
   },
   {

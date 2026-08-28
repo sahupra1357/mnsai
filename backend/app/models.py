@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import EmailStr
 from sqlalchemy import JSON, Column, LargeBinary
@@ -339,3 +340,90 @@ class DocumentExtractionApiKeyRecord(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     last_used_at: datetime | None = Field(default=None)
     revoked_at: datetime | None = Field(default=None, index=True)
+
+
+class ContractFieldExtractionRecord(SQLModel, table=True):
+    """One contract field extraction: ten machine-extracted values, what the
+    operator actually requested, and the human verification kept separate from them.
+
+    The ten field columns map one-to-one onto the ten JSON keys defined in
+    `app.contract_fields.catalogue` — same names, same order. They hold the
+    **machine** output and are never overwritten by a human; corrections live in
+    `verified_values`. Every one is NOT NULL DEFAULT '': blank means blank, never
+    NULL. Dates are `DD/MM/YYYY` text, not a `date` column, so a source that cannot
+    be normalized stays representable as ''.
+    """
+
+    __tablename__ = "contract_field_extraction"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, index=True, ondelete="CASCADE"
+    )
+    # The document_extraction row this came from. Indexed, but deliberately not a
+    # foreign key: a verified contract record outlives the extraction it was read
+    # from.
+    document_id: uuid.UUID = Field(nullable=False, index=True)
+    source_name: str = Field(max_length=255)
+    source_sha256: str = Field(max_length=64, index=True)
+
+    # --- the ten field columns, in catalogue order -------------------------- #
+    contract_title: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    parties: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    effective_date: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    term_end_date: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    contract_value: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    governing_law: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    payment_terms: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    notice_period: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    renewal_terms: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    termination_clause: str = Field(
+        default="", nullable=False, sa_column_kwargs={"server_default": ""}
+    )
+    # ------------------------------------------------------------------------ #
+
+    # Which of the ten keys were requested, so a blank column that was never asked
+    # for can be told apart from one that was extracted and not found. Any non-empty
+    # subset of the ten — no field is implicitly requested.
+    selected_fields: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    extraction_status: str = Field(max_length=30, nullable=False, index=True)
+    unresolved_fields: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    verified_values: dict[str, str] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    verified_by: uuid.UUID | None = Field(
+        default=None, foreign_key="user.id", nullable=True, ondelete="SET NULL"
+    )
+    verified_at: datetime | None = Field(default=None)
+    warnings: list[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    field_provenance: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    audit_events: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
