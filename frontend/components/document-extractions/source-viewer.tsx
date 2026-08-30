@@ -74,6 +74,17 @@ export function SourceViewer({
         ?.coordinate_space ?? null,
     [page.elements],
   )
+
+  // Not every parser reports where on the page each run of text sits: the
+  // markdown-based ones (mineru, marker) have no coordinates at all. Without
+  // them the overlay silently renders nothing, which reads as a broken page
+  // rather than a parser that never had the data — so say which it is.
+  const positionedCount = useMemo(
+    () => page.elements.filter((element) => boxStyle(element)).length,
+    [page.elements],
+  )
+  const positionsUnavailable = page.elements.length > 0 && positionedCount === 0
+
   return (
     <section
       className="flex min-h-[34rem] min-w-0 flex-col overflow-hidden rounded-lg border bg-muted/20"
@@ -87,6 +98,15 @@ export function SourceViewer({
           <p className="text-xs text-muted-foreground">
             Page {page.page_number} · immutable
           </p>
+          {positionsUnavailable && (
+            <p className="mt-1 max-w-prose text-xs text-muted-foreground">
+              {page.selected_parser
+                ? `${page.selected_parser.name} extracted this text without positions,`
+                : "This parser extracted the text without positions,"}{" "}
+              so the document cannot be highlighted. The extracted values are
+              unaffected.
+            </p>
+          )}
         </div>
         <div
           className="flex items-center gap-1"
