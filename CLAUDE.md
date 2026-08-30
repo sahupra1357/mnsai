@@ -165,6 +165,50 @@ Past that the API refuses with **402** and the UI sends the user to `/pricing?re
 the user has spent requests in the meantime writes back the stale count. Acceptable
 today (the admin sees the field), but a `PATCH`-only-what-changed would fix it.
 
+## Fixed 2026-08-30: no bounding boxes on Modal-routed extractions
+
+Boxes appeared on localhost but never on Render. Not a deploy or config problem —
+the two environments run **different extractors**, and only one reported geometry.
+
+`source-viewer.tsx:20` draws a box only when an element has **both** `bounding_box`
+and `coordinate_space`; missing either, `boxStyle` returns undefined and nothing is
+painted, silently. `modal_parser_worker.py` typed every parser `-> list[str]`, so
+docling/paddleocr/mineru/marker were flattened to bare text and the element dicts
+carried no geometry at all. Locally Modal dispatch fails (the expired tunnel), so
+everything falls back to tesseract, which emits one element **per word** each with a
+real box — hence word-level boxes plus the OCR artifacts (`Net 3@`, `9@ days`,
+`contract_title: "MASTER"`) that Render's clean native-text output does not have.
+The box-less environment was doing the *better* extraction.
+
+**The worker now carries geometry.** `_extract` returns `Block(text, box, space)`.
+`box` and `space` share units and a top-left origin — the units are irrelevant since
+the viewer positions boxes as a percentage of the space, but mixing them would
+misplace everything, so a parser that cannot supply both emits neither. Coverage:
+
+- **docling** — walks `iterate_items()` for per-item text and `prov[0].bbox`, and
+  flips docling's bottom-left origin against the page height. This also retires the
+  whole-document-as-one-markdown-blob behaviour, which is what made a single element
+  swallow every labelled clause. Any unfamiliar docling build falls back to the old
+  markdown path: geometry is a nice-to-have, text is not.
+- **paddleocr** — pairs `rec_texts` with `rec_boxes`, or the extent of `rec_polys`.
+  Boxes are in image pixels, so geometry is emitted only when Pillow can read the
+  source dimensions (raster sources; not PDFs).
+- **mineru / marker** — markdown output, genuinely no coordinates. Text-only by
+  nature, not by omission.
+
+Nothing in `visual_document_extractor/**` changed: `AdapterResult.model_validate_json`
+already accepted both fields, so the worker's new keys flow straight through.
+
+**The viewer now says so.** When a page has elements but none are drawable, the source
+pane names the parser: "docling extracted this text without positions, so the document
+cannot be highlighted. The extracted values are unaffected." Previously it rendered
+nothing with no explanation, which reads as a bug rather than missing data.
+
+docling and paddleocr are not installed in this image, so
+`test_modal_parser_geometry.py` stubs them with objects shaped like their real output
+and tests the mapping — the origin flip, text/box pairing, and the both-or-neither
+rule — rather than the libraries.
+
 ## House rules
 - Don't start servers with `dangerouslyDisableSandbox` unless a command genuinely needs network/ports.
 - Keep generated client (`frontend/src/client/`) regenerated, never hand-edited.
