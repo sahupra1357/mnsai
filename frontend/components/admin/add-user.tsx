@@ -47,7 +47,9 @@ const AddUser = ({ isOpen, onClose }: AddUserProps) => {
       password: "",
       confirm_password: "",
       is_superuser: false,
-      is_active: false,
+      // New accounts are usable straight away; the backend default is also
+      // active, and an inactive user is refused at login.
+      is_active: true,
     },
   })
 
@@ -71,6 +73,12 @@ const AddUser = ({ isOpen, onClose }: AddUserProps) => {
   })
 
   const onSubmit: SubmitHandler<UserCreateForm> = (data) => {
+    // Left blank means "whatever the backend's default is" — the setting stays
+    // the single source of truth for a new account instead of being mirrored
+    // (and drifting) here.
+    if (!Number.isFinite(data.request_limit as number)) {
+      data.request_limit = undefined
+    }
     mutation.mutate(data)
   }
 
@@ -144,6 +152,31 @@ const AddUser = ({ isOpen, onClose }: AddUserProps) => {
             />
             {errors.confirm_password && (
               <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="request_limit">Request limit</Label>
+            <Input
+              id="request_limit"
+              type="number"
+              min={0}
+              placeholder="Default"
+              {...register("request_limit", {
+                valueAsNumber: true,
+                min: { value: 0, message: "Limit cannot be negative" },
+              })}
+              className={errors.request_limit ? "border-destructive" : ""}
+            />
+            {errors.request_limit ? (
+              <p className="text-sm text-destructive">
+                {errors.request_limit.message}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Lifetime requests this account may make before it has to
+                subscribe. Superusers are never limited.
+              </p>
             )}
           </div>
 

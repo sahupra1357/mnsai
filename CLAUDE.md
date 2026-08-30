@@ -127,6 +127,44 @@ Changes made after Phase 4, at Pradeep's request:
 
 **⚠️ `.env` points `POSTGRES_SERVER` at a remote Render Postgres.** A plain `alembic upgrade head` in this repo applies DDL to that remote database, not the local Docker one. For local work pass `POSTGRES_SERVER=localhost POSTGRES_PORT=5434` (env vars override `.env`), which is how the migration was applied.
 
+## Feature: per-user request quota (2026-08-30)
+
+A non-superuser account may make a limited number of **metered requests**, lifetime.
+Past that the API refuses with **402** and the UI sends the user to `/pricing?reason=quota`.
+
+- **Two columns on `user`** (migration `d2e3f4a5b6c7`): `request_limit` (the enforced
+  ceiling, editable per user) and `request_count` (spent, lifetime). Both
+  `NOT NULL`; existing rows were backfilled to the default limit with zero spent.
+  `settings.DEFAULT_REQUEST_LIMIT` (5) only seeds a **new** account — the column is
+  what is enforced, so changing the setting never retroactively moves anyone's limit.
+- **One dependency does the whole job**: `QuotaUser` in `backend/app/api/deps.py`.
+  Superusers pass through unmetered. The count increments *after* the endpoint
+  returns and only if it did not raise, so a 500 on our side is not charged to the
+  user. The check is not transactional: two genuinely simultaneous calls can both
+  pass on the last unit. That is deliberate — it is a product ceiling, not a ledger.
+- **Metered = feature actions**: contract extraction create, document extraction
+  create + page reprocess, all legacy extractor uploads (`/files/*`, `/gptfiles/ocr`,
+  `/gptfiles/ocr-json`), item create. **Not metered**: auth, `/users/me*`, every GET,
+  review/verification actions, and API-key management. Charging for a GET would mean
+  a user could not look at the results they already paid for. Add the meter to a new
+  endpoint by annotating its user param `QuotaUser` instead of `CurrentUser`.
+- **The legacy `/files/*` and `/gptfiles/*` uploads now require a session.** They were
+  unauthenticated, and an anonymous caller cannot be metered at all.
+- **Frontend**: `lib/quota.ts` holds the shared 402 handling. An axios interceptor in
+  `lib/openapi-config.ts` covers every generated-client call; the two hand-written
+  `fetch` modules (`components/{document-extractions,contract-extraction}/api.ts`)
+  call `handleQuotaResponse` in their `expectJson` funnel. `components/pricing/quota-banner.tsx`
+  explains the block on arrival, reading the real numbers from `/users/me/quota` so
+  the copy never hard-codes a limit. The user menu shows requests remaining.
+- **Editable from user management**: the users table has a Requests column
+  (`used / limit`, "Unlimited" for superusers, red once spent); Edit User sets the
+  limit and the used count with a Reset button; Add User's limit field left blank
+  falls back to the backend default rather than mirroring it.
+
+**Known gap:** Edit User submits `request_count` as loaded, so saving the dialog after
+the user has spent requests in the meantime writes back the stale count. Acceptable
+today (the admin sees the field), but a `PATCH`-only-what-changed would fix it.
+
 ## House rules
 - Don't start servers with `dangerouslyDisableSandbox` unless a command genuinely needs network/ports.
 - Keep generated client (`frontend/src/client/`) regenerated, never hand-edited.

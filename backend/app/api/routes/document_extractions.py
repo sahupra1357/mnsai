@@ -13,7 +13,7 @@ from fastapi import (
     status,
 )
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, QuotaUser
 from app.core.config import settings
 from app.core.db import engine
 from app.visual_document_extractor.api_keys import (
@@ -102,7 +102,7 @@ def get_capabilities(current_user: CurrentUser) -> CapabilityResponse:
 
 @router.post("", response_model=DocumentResult, status_code=status.HTTP_201_CREATED)
 async def create_document_extraction(
-    current_user: CurrentUser,
+    current_user: QuotaUser,
     file: UploadFile = File(...),
     parser: str | None = Form(default=None),
 ) -> DocumentResult:
@@ -477,7 +477,7 @@ def reprocess_document_page(
     document_id: uuid.UUID,
     page_number: int,
     request: ReprocessRequest,
-    current_user: CurrentUser,
+    current_user: QuotaUser,
 ) -> PageResult:
     try:
         coordinator = get_modal_coordinator()

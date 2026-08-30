@@ -110,6 +110,22 @@ const NAV_ITEMS: Array<NavItem> = [
     label: "Pricing",
     href: "/pricing",
   },
+  {
+    label: "Admin",
+    superuserOnly: true,
+    children: [
+      {
+        label: "User Management",
+        subLabel: "Create, edit, and deactivate accounts",
+        href: "/admin",
+      },
+      {
+        label: "Blog Admin",
+        subLabel: "Write and publish blog posts",
+        href: "/admin/blog",
+      },
+    ],
+  },
 ]
 
 interface WithSubnavigationProps {

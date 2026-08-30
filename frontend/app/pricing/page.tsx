@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import WithSubnavigation from "@/components/common/with-subnavigation"
+import QuotaBanner from "@/components/pricing/quota-banner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Check, ArrowRight } from "lucide-react"
@@ -61,6 +63,11 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <WithSubnavigation />
+
+      {/* Explains why the user landed here when a metered request was refused. */}
+      <Suspense>
+        <QuotaBanner />
+      </Suspense>
 
       {/* Hero */}
       <section className="relative flex flex-col items-center text-center px-6 py-20 overflow-hidden">

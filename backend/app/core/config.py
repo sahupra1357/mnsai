@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:3000"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+
+    # Lifetime request quota handed to a newly created non-superuser account.
+    # It is only the seed value: the enforced limit lives in the user's own
+    # `request_limit` column, which a superuser edits per user. Superusers are
+    # never metered.
+    DEFAULT_REQUEST_LIMIT: int = 5
+
     MAX_EXTR_COUNT: int = 5
     MAX_CONCURRENT_PDF_CONVERSION: int = 4
     BATCH_SIZE: int = 1

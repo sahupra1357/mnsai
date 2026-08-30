@@ -146,6 +146,62 @@ const EditUser = ({ user, isOpen, onClose }: EditUserProps) => {
             )}
           </div>
 
+          <div className="rounded-md border border-border p-3 flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="request_limit">Request limit</Label>
+              <Input
+                id="request_limit"
+                type="number"
+                min={0}
+                {...register("request_limit", {
+                  valueAsNumber: true,
+                  min: { value: 0, message: "Limit cannot be negative" },
+                })}
+                className={errors.request_limit ? "border-destructive" : ""}
+              />
+              {errors.request_limit ? (
+                <p className="text-sm text-destructive">
+                  {errors.request_limit.message}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Lifetime requests this account may make. Superusers are never
+                  limited.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="request_count">Requests used</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="request_count"
+                  type="number"
+                  min={0}
+                  {...register("request_count", {
+                    valueAsNumber: true,
+                    min: { value: 0, message: "Used count cannot be negative" },
+                  })}
+                  className={errors.request_count ? "border-destructive" : ""}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    setValue("request_count", 0, { shouldDirty: true })
+                  }
+                >
+                  Reset
+                </Button>
+              </div>
+              {errors.request_count && (
+                <p className="text-sm text-destructive">
+                  {errors.request_count.message}
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-4 mt-2">
             <div className="flex items-center gap-2">
               <Checkbox

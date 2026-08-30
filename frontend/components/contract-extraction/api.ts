@@ -5,6 +5,7 @@ import type {
   FieldCatalogueResponse,
   VerificationAction,
 } from "./types"
+import { handleQuotaResponse } from "@/lib/quota"
 
 /** Browser calls go through the Next.js proxy, which attaches the HttpOnly cookie
  *  as a bearer token server-side. No token ever reaches client storage. */
@@ -44,6 +45,9 @@ async function errorMessage(response: Response): Promise<string> {
 
 async function expectJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    // A spent request quota navigates to the subscription page instead of
+    // surfacing as a failed upload the user cannot act on.
+    await handleQuotaResponse(response)
     throw new ContractExtractionApiError(
       await errorMessage(response),
       response.status,

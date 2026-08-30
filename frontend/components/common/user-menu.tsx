@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { UserRound, LogOut, User } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { UserRound, LogOut, User, Zap } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { UsersService } from "@/src/client"
 import useAuth from "@/hooks/use-auth"
 
 interface UserMenuProps {
@@ -18,6 +20,15 @@ interface UserMenuProps {
 
 const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
   const { logout, user } = useAuth()
+
+  // Remaining requests, so the limit is visible before it is hit rather than
+  // only at the moment a request is refused.
+  const { data: quota } = useQuery({
+    queryKey: ["userQuota"],
+    queryFn: () => UsersService.readUserQuota(),
+    enabled: Boolean(user) && !user?.is_superuser,
+    retry: false,
+  })
 
   if (!user) {
     if (hideSignedOutActions) return null
@@ -58,6 +69,16 @@ const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {quota && !quota.unlimited && (
+            <DropdownMenuItem asChild>
+              <Link href="/pricing" className="flex items-center gap-2">
+                <Zap size={18} />
+                <span>
+                  {quota.remaining} of {quota.limit} requests left
+                </span>
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href="/settings" className="flex items-center gap-2">
               <User size={18} />

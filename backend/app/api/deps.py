@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Annotated
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -55,3 +55,61 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+QUOTA_EXCEEDED_CODE = "quota_exceeded"
+QUOTA_REDIRECT_PATH = "/pricing?reason=quota"
+
+
+def quota_exceeded_detail(user: User) -> dict[str, Any]:
+    """The 402 body. `code` is what the frontend matches on; `redirect` is where
+    it sends the user. Kept structured so the UI never parses prose."""
+    return {
+        "code": QUOTA_EXCEEDED_CODE,
+        "message": (
+            f"You have used all {user.request_limit} of your free requests. "
+            "Subscribe to continue."
+        ),
+        "limit": user.request_limit,
+        "used": user.request_count,
+        "redirect": QUOTA_REDIRECT_PATH,
+    }
+
+
+def consume_request_quota(
+    session: SessionDep, current_user: CurrentUser
+) -> Generator[User, None, None]:
+    """Meters one request against the caller's lifetime quota.
+
+    Superusers pass through unmetered. Everyone else is refused with 402 once
+    `request_count` reaches `request_limit`.
+
+    The count is incremented *after* the endpoint returns, and only when it did
+    not raise: a request that fails on our side should not cost the user one of
+    their five. The check itself is not transactional, so two genuinely
+    simultaneous requests can both pass on the last remaining unit; the ceiling
+    is a product limit, not a billing ledger, and one extra call is cheaper than
+    locking the user row on every metered endpoint.
+    """
+    if current_user.is_superuser:
+        yield current_user
+        return
+
+    if current_user.request_count >= current_user.request_limit:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=quota_exceeded_detail(current_user),
+        )
+
+    yield current_user
+
+    # Re-read inside this session: the endpoint may have committed its own work
+    # and expired the instance we checked above.
+    user = session.get(User, current_user.id)
+    if user is not None:
+        user.request_count += 1
+        session.add(user)
+        session.commit()
+
+
+QuotaUser = Annotated[User, Depends(consume_request_quota)]

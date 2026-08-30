@@ -3,6 +3,7 @@ import os
 from fastapi.responses import JSONResponse
 #from app.core.config import settings
 
+from app.api.deps import QuotaUser
 from app.googleapi.documentocr import process_document
 from app.tesractopenaiapi.openaiextractor import process_document_invoice
 from app.tesractopenaiapi.openaiextractor_imgpp import process_invoice
@@ -18,7 +19,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 @router.post('/upload')
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(_: QuotaUser, file: UploadFile = File(...)):
     file_location = os.path.join(UPLOAD_FOLDER, file.filename)
     #file_location = os.path.join(file.filename)
 
@@ -32,7 +33,7 @@ async def upload_file(file: UploadFile = File(...)):
     return JSONResponse(content={"message": dpcument_content, "file_path": file_location}, status_code=200)    
 
 @router.post('/uploadts')
-async def upload_file_ts(file: UploadFile = File(...)):
+async def upload_file_ts(_: QuotaUser, file: UploadFile = File(...)):
     file_location = os.path.join(UPLOAD_FOLDER, file.filename)
     #file_location = os.path.join(file.filename)
 
@@ -45,7 +46,7 @@ async def upload_file_ts(file: UploadFile = File(...)):
     return JSONResponse(content={"message": dpcument_content, "file_path": file_location}, status_code=200)    
 
 @router.post('/uploadtspp')
-async def upload_file_tspp(file: UploadFile = File(...)):
+async def upload_file_tspp(_: QuotaUser, file: UploadFile = File(...)):
     file_location = os.path.join(UPLOAD_FOLDER, file.filename)
     #file_location = os.path.join(file.filename)
 

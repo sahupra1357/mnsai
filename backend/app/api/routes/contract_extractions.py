@@ -14,7 +14,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import ValidationError
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, QuotaUser, SessionDep
 from app.contract_fields import store
 from app.contract_fields.models import (
     ContractFieldResult,
@@ -112,7 +112,7 @@ def list_records(
 @router.post("", response_model=ContractFieldResult)
 async def create_contract_extraction(
     session: SessionDep,
-    current_user: CurrentUser,
+    current_user: QuotaUser,
     file: UploadFile = File(...),
     selected_fields: list[str] = Form(default=[]),
 ) -> ContractFieldResult:

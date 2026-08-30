@@ -1,6 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException
 import os
 from fastapi.responses import JSONResponse
+
+from app.api.deps import QuotaUser
 #from app.core.config import settings
 
 #from app.googleapi.documentocr import process_document
@@ -21,7 +23,7 @@ if not os.path.exists(OUTPUT_FOLDER):
 
 @router.post('/upload')
 #async def upload_file(file: UploadFile = File(...)):
-async def process_document_invoice(file: UploadFile = File(...)):
+async def process_document_invoice(_: QuotaUser, file: UploadFile = File(...)):
     file_location = os.path.join(UPLOAD_FOLDER, file.filename)
     #output_location = os.path.join(OUTPUT_FOLDER, file.filename.replace(".pdf", ".txt"))
     #file_location = os.path.join(file.filename)
