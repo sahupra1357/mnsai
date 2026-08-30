@@ -6,6 +6,8 @@ from pydantic import EmailStr
 from sqlalchemy import JSON, Column, LargeBinary
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.core.config import settings
+
 
 # Shared properties
 class UserBase(SQLModel):
@@ -13,6 +15,13 @@ class UserBase(SQLModel):
     is_active: bool = True
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
+    # Lifetime request quota. `request_limit` is the enforced ceiling and is
+    # editable per user from the admin screen; `request_count` is how many
+    # metered actions the account has spent. Superusers ignore both.
+    request_limit: int = Field(
+        default_factory=lambda: settings.DEFAULT_REQUEST_LIMIT, ge=0
+    )
+    request_count: int = Field(default=0, ge=0)
 
 
 # Properties to receive via API on creation
@@ -56,11 +65,27 @@ class User(UserBase, table=True):
 # Properties to return via API, id is always required
 class UserPublic(UserBase):
     id: uuid.UUID
+    # Redeclared without a default: both columns are NOT NULL, so a response
+    # always carries them. Inheriting the defaults would make them optional in
+    # the OpenAPI schema and force every consumer to null-check a value that
+    # cannot be missing.
+    request_limit: int
+    request_count: int
 
 
 class UsersPublic(SQLModel):
     data: list[UserPublic]
     count: int
+
+
+class UserQuota(SQLModel):
+    """What the signed-in account has left. `unlimited` is true for superusers,
+    in which case `limit` and `remaining` carry no meaning."""
+
+    limit: int
+    used: int
+    remaining: int
+    unlimited: bool
 
 
 # Shared properties

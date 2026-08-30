@@ -5,6 +5,7 @@ import type {
   ReviewAction,
   ReviewElementUpdate,
 } from "./types"
+import { handleQuotaResponse } from "@/lib/quota"
 
 const API_ROOT = "/api/proxy/api/v1/document-extractions"
 
@@ -42,6 +43,9 @@ async function errorMessage(response: Response): Promise<string> {
 
 async function expectJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    // A spent request quota navigates to the subscription page instead of
+    // surfacing as a failed upload the user cannot act on.
+    await handleQuotaResponse(response)
     throw new DocumentExtractionApiError(
       await errorMessage(response),
       response.status,

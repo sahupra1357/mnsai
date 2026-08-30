@@ -19,6 +19,7 @@ from app.models import (
     User,
     UserCreate,
     UserPublic,
+    UserQuota,
     UserRegister,
     UsersPublic,
     UserUpdate,
@@ -123,6 +124,22 @@ def read_user_me(current_user: CurrentUser) -> Any:
     Get current user.
     """
     return current_user
+
+
+@router.get("/me/quota", response_model=UserQuota)
+def read_user_quota(current_user: CurrentUser) -> Any:
+    """
+    Remaining lifetime request quota for the signed-in user.
+    """
+    if current_user.is_superuser:
+        return UserQuota(limit=0, used=0, remaining=0, unlimited=True)
+    remaining = max(current_user.request_limit - current_user.request_count, 0)
+    return UserQuota(
+        limit=current_user.request_limit,
+        used=current_user.request_count,
+        remaining=remaining,
+        unlimited=False,
+    )
 
 
 @router.delete("/me", response_model=Message)

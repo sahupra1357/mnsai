@@ -11,7 +11,7 @@ from app.gptocr.ocrbatchprocess import process_batches, concatenate_texts
 from app.gptocr.jsonextractservice import json_extract_service
 from app.gptocr.logger import logger
 from app.core.config import settings
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, QuotaUser, SessionDep
 from app.models import Extr, ExtrBase, Item
 from sqlmodel import func, select
 
@@ -22,9 +22,9 @@ router = APIRouter(prefix="/gptfiles", tags=["gptfiles"])
 @router.post('/ocr', response_model=OCRResponse)
 async def ocr_endpoint(
     session: SessionDep,
+    current_user: QuotaUser,
     file: Optional[UploadFile] = File(None),
     #ocr_request: Optional[OCRRequest] = Body(None),
-    current_user: CurrentUser = None,
 ):
     """
     Perform OCR on a provided PDF file or a PDF from a URL.
@@ -120,8 +120,8 @@ async def ocr_endpoint(
 @router.post('/ocr-json', response_model=OCRJsonResponse)
 async def ocr_json_endpoint(
     session: SessionDep,
+    current_user: QuotaUser,
     file: Optional[UploadFile] = File(None),
-    current_user: CurrentUser = None,
 ):
     """
     Perform OCR on a provided PDF/image file and return the extracted content

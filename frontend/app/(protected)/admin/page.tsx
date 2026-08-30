@@ -3,11 +3,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, Suspense } from "react"
-import { type UserPublic, UsersService } from "@/src/client"
+import { UsersService } from "@/src/client"
 import AddUser from "@/components/admin/add-user"
 import ActionsMenu from "@/components/common/actions-menu"
 import Navbar from "@/components/common/navbar"
 import { PaginationFooter } from "@/components/common/pagination-footer"
+import useAuth from "@/hooks/use-auth"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -31,7 +32,7 @@ function getUsersQueryOptions({ page }: { page: number }) {
 
 function UsersTable() {
   const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const { user: currentUser } = useAuth()
   const searchParams = useSearchParams()
   const router = useRouter()
   const page = Number(searchParams.get("page")) || 1
@@ -66,6 +67,7 @@ function UsersTable() {
             <TableHead className="w-1/5">Full name</TableHead>
             <TableHead className="w-1/2">Email</TableHead>
             <TableHead className="w-[10%]">Role</TableHead>
+            <TableHead className="w-[10%]">Requests</TableHead>
             <TableHead className="w-[10%]">Status</TableHead>
             <TableHead className="w-[10%]">Actions</TableHead>
           </TableRow>
@@ -74,7 +76,7 @@ function UsersTable() {
           {isPending ? (
             Array.from({ length: 3 }).map((_, index) => (
               <TableRow key={index}>
-                {Array.from({ length: 5 }).map((_, i) => (
+                {Array.from({ length: 6 }).map((_, i) => (
                   <TableCell key={i}>
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
@@ -94,6 +96,21 @@ function UsersTable() {
                   {user.email}
                 </TableCell>
                 <TableCell>{user.is_superuser ? "Superuser" : "User"}</TableCell>
+                <TableCell>
+                  {user.is_superuser ? (
+                    <span className="text-muted-foreground">Unlimited</span>
+                  ) : (
+                    <span
+                      className={
+                        user.request_count >= user.request_limit
+                          ? "text-ui-danger font-medium"
+                          : ""
+                      }
+                    >
+                      {user.request_count} / {user.request_limit}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div
@@ -125,6 +142,26 @@ function UsersTable() {
 }
 
 export default function AdminPage() {
+  const { user, isLoading } = useAuth()
+
+  // Every /users endpoint behind this page requires a superuser, so a plain
+  // signed-in user gets the same refusal here that the API would give.
+  if (isLoading) {
+    return (
+      <div className="container mx-auto max-w-full pt-12">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    )
+  }
+
+  if (!user?.is_superuser) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] text-muted-foreground text-sm">
+        Access denied. Superuser required.
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto max-w-full">
       <h1 className="text-2xl font-semibold pt-12 text-center md:text-left">
