@@ -7,6 +7,7 @@ import {
   FileText,
   Github,
   GraduationCap,
+  ScanSearch,
   Table2,
 } from "lucide-react"
 import Link from "next/link"
@@ -18,9 +19,11 @@ import Link from "next/link"
  */
 
 /** Each tool has its own repo; `source` points at the repo root so GitHub
- *  renders that project's README. All five repos must stay public — this is a
- *  public page, and GitHub serves private repos as a bare 404, so a link to
- *  one reads as broken rather than restricted. */
+ *  renders that project's README. Every linked repo must stay public — this is
+ *  a public page, and GitHub serves private repos as a bare 404, so a link to
+ *  one reads as broken rather than restricted. A tool whose repo is still
+ *  private omits `source` and shows no link at all, which is honest; add the
+ *  link back once the repo is public. */
 const GH = "https://github.com/sahupra1357"
 
 /** A card links to an in-app route (`href`) or, for a tool that runs on your
@@ -30,7 +33,7 @@ type Solution = {
   icon: typeof FileText
   title: string
   description: string
-  source: string
+  source?: string
   href?: string
   demo?: { src: string; poster?: string }
 }
@@ -69,6 +72,14 @@ const solutions: Solution[] = [
     source: `${GH}/AIResumeMatcher`,
   },
   {
+    icon: ScanSearch,
+    title: "Semantic Document Search",
+    description:
+      "Search documents of any shape by meaning, with every hit highlighted in place in the original.",
+    href: "/solutions/similarity-search",
+    // sahupra1357/SimilaritySearch is private; no link until it is public.
+  },
+  {
     icon: Table2,
     title: "Coding Agent Viewer",
     description:
@@ -93,8 +104,8 @@ export function ToolsGrid() {
         </p>
       </div>
 
-      {/* Three across: at five tools, four columns leaves a lone orphan on the
-          second row, and five columns squeezes each card under ~210px. */}
+      {/* Three across: four or more columns leave orphans on the second row
+          at these counts, and squeeze each card under ~210px. */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {solutions.map(
           ({ icon: Icon, title, description, href, demo, source }) => (
@@ -134,19 +145,22 @@ export function ToolsGrid() {
                     />
                   ) : null}
 
-                  <a
-                    href={source}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    // aria-label because the icon alone gives no accessible name,
-                    // and five identical "Source" links need distinguishing.
-                    aria-label={`${title} source code on GitHub`}
-                    title="View source on GitHub"
-                    className="relative z-10 inline-flex items-center gap-1 rounded px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    <Github className="h-3.5 w-3.5" />
-                    Source
-                  </a>
+                  {source ? (
+                    <a
+                      href={source}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      // aria-label because the icon alone gives no accessible
+                      // name, and the repeated "Source" links need
+                      // distinguishing from one another.
+                      aria-label={`${title} source code on GitHub`}
+                      title="View source on GitHub"
+                      className="relative z-10 inline-flex items-center gap-1 rounded px-1.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      <Github className="h-3.5 w-3.5" />
+                      Source
+                    </a>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
