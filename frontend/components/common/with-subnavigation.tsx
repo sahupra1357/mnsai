@@ -64,6 +64,12 @@ const NAV_ITEMS: Array<NavItem> = [
           "Pull 10 key contract fields to JSON, verify blanks, and store the row",
         href: "/contract-extraction",
       },
+      {
+        label: "Semantic Document Search",
+        subLabel:
+          "Search mixed documents by meaning and see each hit in its source",
+        href: "/solutions/similarity-search",
+      },
     ],
   },
   {
