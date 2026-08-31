@@ -209,6 +209,48 @@ docling and paddleocr are not installed in this image, so
 and tests the mapping — the origin flip, text/box pairing, and the both-or-neither
 rule — rather than the libraries.
 
+## Fixed 2026-08-31: Sign In did nothing after a deploy
+
+Reported as a cache problem; it was a **stale-cookie deadlock**, reproduced live
+on `www.mnsai.io`.
+
+`middleware.ts` treated the *presence* of the `access_token` cookie as proof of a
+session. A cookie the API no longer accepts therefore produced a trap: the nav
+rendered "Sign In" (because `/api/auth/me` correctly 401s), but `/login`
+redirected straight back to `/`, so the button looked dead and there was no way
+to re-authenticate short of clearing site data. Incognito worked because it had
+no cookie. Proven in production with a junk cookie: `/login` → `307 → /` while
+`/api/auth/me` → `401 Could not validate credentials`.
+
+Why deploys trigger it: `SECRET_KEY` defaults to `secrets.token_urlsafe(32)`,
+**regenerated per process**. If it is unset in the environment, every deploy or
+cold start signs with a new key and silently invalidates every outstanding
+token, while 8-day cookies stay in the browser. Token expiry and a deleted user
+produce the same deadlock, so the middleware fix is the general one.
+
+- **`middleware.ts`** no longer redirects anyone away from `/login` or
+  `/signup` — cookie presence is not a session. Protected routes now require a
+  structurally intact, unexpired JWT (`exp` only; the signature can't be checked
+  without the backend key) and **delete** a cookie they reject, so a dead
+  session collapses back to a clean signed-out one.
+- **`/login` and `/signup`** send genuinely signed-in visitors home themselves,
+  from `useAuth().user` — i.e. after the session was actually verified.
+- **`/api/auth/me`** clears the cookie on a 401/403 from the backend (never on
+  5xx: that means the API is unwell, not the session).
+- **Cache headers**: the auth routes now send
+  `private, no-store, max-age=0, must-revalidate`. Next was defaulting
+  `/api/auth/me` to **`public`, max-age=0** with no `Vary: Cookie` — a per-user
+  identity response any shared cache was invited to store. The client fetch uses
+  `cache: "no-store"` (Safari heuristically caches responses with no directive).
+- **`SECRET_KEY` unset now fails startup** outside `local` (warns in `local`),
+  matching the existing `changethis` policy. **This will block a Render deploy
+  if the var is not set — that is the point**; set it once and keep it stable.
+
+Regression tests in `tests/login.spec.ts` (both fail against the old
+middleware). `tests/config.ts` lost its `import.meta.url` use, which had been
+breaking the entire Playwright suite on Node 22 with "Cannot require() ES
+Module"; `PLAYWRIGHT_BASE_URL` now overrides the base URL. Full suite: 29 passed.
+
 ## House rules
 - Don't start servers with `dangerouslyDisableSandbox` unless a command genuinely needs network/ports.
 - Keep generated client (`frontend/src/client/`) regenerated, never hand-edited.

@@ -9,7 +9,10 @@ import type { UserPublic } from "@/src/client"
 import { useToast } from "@/hooks/use-toast"
 
 async function fetchCurrentUser(): Promise<UserPublic | null> {
-  const res = await fetch("/api/auth/me")
+  // no-store because this answers "who is signed in right now": a cached copy
+  // shows a signed-out visitor as signed in, or the reverse, and Safari will
+  // heuristically cache a response that carries no explicit directive.
+  const res = await fetch("/api/auth/me", { cache: "no-store" })
   if (!res.ok) return null
   return res.json()
 }
