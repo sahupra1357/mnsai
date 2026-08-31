@@ -23,6 +23,14 @@ def parse_cors(v: Any) -> list[str] | str:
     raise ValueError(v)
 
 
+# Generated once per process. If SECRET_KEY is not configured, every restart
+# signs tokens with a brand new key, so every session issued before the restart
+# is silently rejected afterwards — which on a redeploy logs the whole user base
+# out at once. Holding the value here lets the validator below notice that
+# nothing was configured and say so, rather than failing invisibly in production.
+EPHEMERAL_SECRET_KEY = secrets.token_urlsafe(32)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
@@ -31,7 +39,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = EPHEMERAL_SECRET_KEY
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:3000"
@@ -176,6 +184,28 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: str | None = None
     GITHUB_CLIENT_SECRET: str | None = None
 
+    def _check_ephemeral_secret_key(self) -> None:
+        """Refuse to run a deployment on a signing key that dies with the process.
+
+        Tokens outlive restarts (ACCESS_TOKEN_EXPIRE_MINUTES is eight days), so
+        an unset SECRET_KEY strands every already-signed-in user behind a cookie
+        the API no longer accepts.
+        """
+        if self.SECRET_KEY != EPHEMERAL_SECRET_KEY:
+            return
+
+        message = (
+            "SECRET_KEY is not set, so a random one was generated for this "
+            "process only. Every restart or redeploy will then invalidate all "
+            "existing sessions. Set SECRET_KEY in the environment "
+            "(e.g. `python -c 'import secrets; print(secrets.token_urlsafe(32))'`) "
+            "and keep it stable across deploys."
+        )
+        if self.ENVIRONMENT == "local":
+            warnings.warn(message, stacklevel=1)
+        else:
+            raise ValueError(message)
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (
@@ -190,6 +220,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _enforce_non_default_secrets(self) -> Self:
         self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
+        self._check_ephemeral_secret_key()
         self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
         self._check_default_secret(
             "FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD

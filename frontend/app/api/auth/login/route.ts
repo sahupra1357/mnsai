@@ -32,7 +32,11 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-proto") === "https" ||
     request.nextUrl.protocol === "https:"
 
-  const response = NextResponse.json({ success: true })
+  const response = NextResponse.json(
+    { success: true },
+    // Sets a session cookie, so it must never be stored anywhere.
+    { headers: { "Cache-Control": "private, no-store, max-age=0, must-revalidate" } },
+  )
   response.cookies.set("access_token", data.access_token, {
     httpOnly: true,
     sameSite: "lax",

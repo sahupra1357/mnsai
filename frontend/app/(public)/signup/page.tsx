@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { Loader2 } from "lucide-react"
 import type { UserRegister } from "@/src/client"
@@ -18,7 +20,15 @@ interface UserRegisterForm extends UserRegister {
 }
 
 export default function SignUpPage() {
-  const { signUpMutation } = useAuth()
+  const { signUpMutation, user } = useAuth()
+  const router = useRouter()
+
+  // Same reasoning as the login page: middleware no longer bounces visitors
+  // holding a cookie, so a confirmed session is what sends someone home.
+  useEffect(() => {
+    if (user) router.replace("/")
+  }, [user, router])
+
   const {
     register,
     handleSubmit,

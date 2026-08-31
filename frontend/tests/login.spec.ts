@@ -1,5 +1,5 @@
 import { type Page, expect, test } from "@playwright/test"
-import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
+import { baseURL, firstSuperuser, firstSuperuserPassword } from "./config.ts"
 import { randomPassword } from "./utils/random.ts"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -114,4 +114,49 @@ test("Logged-out user cannot access protected routes", async ({ page }) => {
 
   await page.goto("/settings")
   await page.waitForURL("/login")
+})
+
+// A cookie the API no longer accepts (expired, or signed with a key that was
+// rotated by a redeploy) used to strand the visitor: the nav rendered "Sign In"
+// because /api/auth/me correctly 401s, but middleware saw the cookie and
+// bounced /login straight back to "/", so the button looked broken and there
+// was no way to sign in again short of clearing site data.
+test("A stale session cookie still lets the user reach the login page", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "access_token",
+      value: "stale.but.present",
+      url: baseURL,
+    },
+  ])
+
+  await page.goto("/login")
+
+  await expect(page).toHaveURL(/\/login/)
+  await verifyInput(page, "Email")
+  await verifyInput(page, "Password", { exact: true })
+})
+
+test("A stale session cookie does not keep a protected route open", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "access_token",
+      value: "stale.but.present",
+      url: baseURL,
+    },
+  ])
+
+  await page.goto("/settings")
+  await page.waitForURL("/login")
+
+  // The dead cookie is cleared on the way out, so nothing is left to bounce
+  // the next request or to make the app look half signed-in.
+  const cookies = await context.cookies()
+  expect(cookies.find((c) => c.name === "access_token")?.value ?? "").toBe("")
 })

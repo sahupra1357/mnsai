@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Suspense, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import useAuth from "@/hooks/use-auth"
 import { emailPattern } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -30,8 +30,17 @@ interface LoginForm {
 
 function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const { loginMutation, error, resetError } = useAuth()
+  const { loginMutation, error, resetError, user } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Middleware deliberately lets everyone reach this page, because a cookie
+  // being present says nothing about whether the API still honours it. Sending
+  // an already-signed-in visitor home is decided here instead, once
+  // /api/auth/me has actually confirmed the session.
+  useEffect(() => {
+    if (user) router.replace("/")
+  }, [user, router])
   const oauthErrorKey = searchParams.get("error")
   const oauthError = oauthErrorKey
     ? (OAUTH_ERROR_MESSAGES[oauthErrorKey] ?? "Sign-in failed. Please try again.")
