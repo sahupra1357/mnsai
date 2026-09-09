@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import UserMenu from "./user-menu"
 import useAuth from "@/hooks/use-auth"
+import { SOLUTIONS, solutionNavHref } from "@/lib/solutions"
 
 interface NavItem {
   label: string
@@ -36,41 +37,14 @@ const NAV_ITEMS: Array<NavItem> = [
   },
   {
     label: "Solutions",
-    children: [
-      // Settings is reached through the user menu ("My profile"), not here.
-      {
-        label: "Data Extraction",
-        subLabel: "Review OCR results with confidence and parser provenance",
-        href: "/document-extractions",
-      },
-      {
-        label: "Contract Review",
-        subLabel: "AI review of contracts for risks, clauses, and obligations",
-        href: "/solutions/contract-review",
-      },
-      {
-        label: "Career Explorer Empowered by AI",
-        subLabel: "Evidence-backed research on any field and the colleges that teach it",
-        href: "/solutions/course-search",
-      },
-      {
-        label: "ATS Resume Matcher",
-        subLabel: "Match your resume to any job description",
-        href: "/solutions/ats-resume-matcher",
-      },
-      {
-        label: "Contract Field Extraction",
-        subLabel:
-          "Pull 10 key contract fields to JSON, verify blanks, and store the row",
-        href: "/contract-extraction",
-      },
-      {
-        label: "Semantic Document Search",
-        subLabel:
-          "Search mixed documents by meaning and see each hit in its source",
-        href: "/solutions/similarity-search",
-      },
-    ],
+    // Generated from the shared tool catalogue so the dropdown and the
+    // dashboard's "Your tools" grid always list the same things.
+    // Settings is reached through the user menu ("My profile"), not here.
+    children: SOLUTIONS.map((solution) => ({
+      label: solution.title,
+      subLabel: solution.navSubLabel,
+      href: solutionNavHref(solution),
+    })),
   },
   {
     label: "Resources",

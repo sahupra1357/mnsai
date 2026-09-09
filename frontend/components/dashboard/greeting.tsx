@@ -1,6 +1,7 @@
 "use client"
 
 import useAuth from "@/hooks/use-auth"
+import { SOLUTIONS } from "@/lib/solutions"
 import { useEffect, useState } from "react"
 
 /**
@@ -53,7 +54,9 @@ export function Greeting() {
       <p className="mt-5 text-base leading-relaxed text-muted-foreground">
         {user
           ? "Your workspace, with a live read on what's moving in AI. Pick a tool and get started."
-          : "Five AI tools for documents, contracts, courses, resumes, and coding-agent logs — alongside a live read on what's moving in AI. Sign in to start using them."}
+          : // Counted from the shared catalogue — a hardcoded number goes
+            // stale the moment a tool is added.
+            `A desk of ${SOLUTIONS.length} AI tools for documents, contracts, courses, resumes, job applications, and coding-agent logs — alongside a live read on what's moving in AI. Sign in to start using them.`}
       </p>
     </div>
   )
