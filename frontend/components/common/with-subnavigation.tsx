@@ -29,9 +29,14 @@ const NAV_ITEMS: Array<NavItem> = [
     label: "Product",
     children: [
       {
-        label: "Dashboard",
-        subLabel: "Trending Design to inspire you",
+        label: "Knowledge Hub",
+        subLabel: "AI engineering, from first principles to production",
         href: "/",
+      },
+      {
+        label: "AI Engineering Guide",
+        subLabel: "Start here: every stage summarised",
+        href: "/learn/AI_ENGINEERING_GUIDE",
       },
     ],
   },
@@ -82,6 +87,12 @@ const NAV_ITEMS: Array<NavItem> = [
         label: "Profile V2",
         subLabel: "Archived second draft of the profile page",
         href: "/drafts/profile-v2",
+        superuserOnly: true,
+      },
+      {
+        label: "Dashboard v1 (backup)",
+        subLabel: "The original AI operations desk home page",
+        href: "/admin/dashboard-v1",
         superuserOnly: true,
       },
     ],

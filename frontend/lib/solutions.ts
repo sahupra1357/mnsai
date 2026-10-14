@@ -1,4 +1,5 @@
 import {
+  Bot,
   Braces,
   Briefcase,
   ClipboardCheck,
@@ -124,7 +125,28 @@ export const SOLUTIONS: Solution[] = [
     },
     source: `${GH}/CodingAgentViewer`,
   },
+  {
+    icon: Bot,
+    title: "mnsAI Agent OS",
+    navSubLabel:
+      "Durable, provider-neutral agent harness for local and cloud models",
+    description:
+      "A durable agent runtime: run the same agent on Ollama, llama.cpp, or Modal by switching one config profile, with persisted runs, resume after a crash, and hard step, token and cost budgets.",
+    source: `${GH}/mnsAIAgentOS`,
+  },
 ]
+
+/** How far a visitor can go with a tool from this site, strongest first:
+ *  - "live"   — it runs here; open it and use it.
+ *  - "demo"   — it runs on your own machine; a screen recording shows it working.
+ *  - "source" — code only, for now. */
+export type SolutionStatus = "live" | "demo" | "source"
+
+export function solutionStatus(solution: Solution): SolutionStatus {
+  if (solution.href) return "live"
+  if (solution.demo) return "demo"
+  return "source"
+}
 
 /**
  * Where the nav sends you for a tool. A tool with no in-app route (it runs on
