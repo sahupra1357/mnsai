@@ -38,7 +38,8 @@ file sets `POSTGRES_SERVER: db`.
 - **API calls from browser**: through the generated OpenAPI client (`frontend/src/client/`, DO NOT delete/hand-edit) or through Next.js API proxy routes when a cookie/secret must stay server-side.
 - **Styling**: use existing shadcn components in `components/ui/`; brand palette is **"Teal & warm paper"** (light: warm cream paper + deep teal accent; dark: blue-slate + bright aqua; `ui-main` utility + shadcn `--primary` tokens carry the teal family — defined in `app/globals.css`). Match the visual language of `app/profile/page.tsx`.
 - **Ports**: frontend 3000, backend 8000. CORS: `FRONTEND_HOST=http://localhost:3000`.
-- **Routes**: `/` is the workspace dashboard (`app/page.tsx`) and is **public** — it renders for signed-out visitors; the tools it links to are the protected part. `/dashboard` still resolves — it redirects to `/`. The profile/portfolio page is `/profile` (`app/profile/page.tsx`, also public).
+- **Routes**: `/` is the **AI engineering knowledge hub** (`app/page.tsx`, rebuilt 2026-10-14) and is **public**; the tools it links to are the protected part. `/dashboard` still resolves — it redirects to `/`. The profile/portfolio page is `/profile` (`app/profile/page.tsx`, also public).
+- **Knowledge hub**: content is read live from `github.com/sahupra1357/AISystems` (`lib/knowledge/`: `source.ts` config, `tree.ts` builds sections → groups → docs from the repo tree, titles/order from the repo's READMEs). Lessons render at `/learn/<repo path without .md>` (public, ISR 1h, only paths in the tree resolve). New files/stages appear without a deploy. `lib/knowledge/snapshot.json` is the fallback file list if the GitHub API is unreachable — refresh it with the command in `tree.ts`. Optional `GITHUB_TOKEN` env lifts the API rate limit. UI in `components/knowledge/*` (folding sidebar, project cards with Live demo / Demo video / Source badges from `solutionStatus()` in `lib/solutions.ts`).
 
 ## Active initiative: Profile page + AI chat agent
 
@@ -57,6 +58,7 @@ Source-of-truth documents for the chat agent live in `backend/app/profile_agent/
 
 **Backups & drafts (never edit or delete; all self-contained, linked in nav Resources dropdown):**
 - `frontend/app/_archive/product-landing.tsx` — the original product landing page (not routed; may be restored later).
+- `frontend/app/(protected)/admin/dashboard-v1/page.tsx` — the previous `/` "AI operations desk" dashboard, **superuser-only** (backend-verified via `lib/server-auth.ts`; others get 404). Still uses `components/dashboard/*` — leave those intact.
 - `frontend/app/drafts/profile-v1/` — frozen 1st profile draft (generic card grid), routed at `/drafts/profile-v1`.
 - `frontend/app/drafts/profile-v2/` — frozen 2nd profile draft ("evidence-driven dossier"), routed at `/drafts/profile-v2`.
 The live rebuild may freely rewrite `components/profile/*` and `lib/profile-data.ts`; the drafts don't depend on them.
