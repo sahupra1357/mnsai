@@ -1,16 +1,16 @@
 "use client"
 
-import Link from "next/link"
-import Image from "next/image"
-import { Suspense, useEffect, useState } from "react"
-import { type SubmitHandler, useForm } from "react-hook-form"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { useRouter, useSearchParams } from "next/navigation"
-import useAuth from "@/hooks/use-auth"
-import { emailPattern } from "@/lib/utils"
+import { Logo } from "@/components/common/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import useAuth from "@/hooks/use-auth"
+import { emailPattern } from "@/lib/utils"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { type SubmitHandler, useForm } from "react-hook-form"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -72,15 +72,7 @@ function LoginPage() {
   return (
     <div className="flex h-screen max-w-sm mx-auto flex-col items-stretch justify-center gap-4 px-4">
       <div className="flex justify-center mb-4">
-        <Image
-          src="/assets/images/mnsAI_2-transparent.png"
-          alt="mnsAI logo"
-          width={160}
-          height={60}
-          style={{ width: "auto", height: "auto" }}
-          className="dark:brightness-0 dark:invert"
-          priority
-        />
+        <Logo size="lg" />
       </div>
 
       {oauthError && (
@@ -129,14 +121,14 @@ function LoginPage() {
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
-        <Link href="/recover-password" className="text-sm text-blue-500">
+        <Link href="/recover-password" className="text-sm text-ui-accent hover:underline">
           Forgot password?
         </Link>
 
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="bg-ui-main hover:bg-[#003d8f] text-white"
+          className="bg-ui-main hover:bg-ui-main/90 text-white"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Log In
@@ -188,7 +180,7 @@ function LoginPage() {
 
       <p className="text-sm text-center">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-blue-500">
+        <Link href="/signup" className="text-ui-accent hover:underline">
           Sign up
         </Link>
       </p>

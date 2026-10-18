@@ -110,7 +110,7 @@ export default async function LearnPage({ params }: Params) {
         </article>
 
         {toc.length > 2 ? (
-          <aside className="sticky top-6 hidden max-h-[calc(100vh-3rem)] w-56 shrink-0 self-start overflow-y-auto xl:block">
+          <aside className="sticky top-[84px] hidden max-h-[calc(100vh-108px)] w-56 shrink-0 self-start overflow-y-auto xl:block">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">On this page</p>
             <ul className="space-y-1 border-l border-border text-[12.5px]">
               {toc.map((h) => (

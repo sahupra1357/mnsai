@@ -16,7 +16,7 @@ type Props = React.ComponentProps<typeof KnowledgeSidebar>
 export function MobileSidebar(props: Props) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
+    <div className="sticky top-[60px] z-30 border-b border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-foreground hover:bg-muted">
           <PanelLeftOpen className="h-4 w-4" />

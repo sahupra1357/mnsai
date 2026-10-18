@@ -3,58 +3,72 @@
 @tailwind utilities;
 
 @layer base {
-  /* "Teal & warm paper" palette (July 2026).
-     Light: warm cream paper bg, soft sand cards, warm dark-gray text, deep-teal
-     accent. Dark: deep blue-slate bg, lighter slate cards, bright-aqua accent.
+  /* "Lime & terminal ink" palette (Oct 2026), taken from the >mnsAI logo:
+     lime #a6e22e, ink #0a0a0a, panel #161616, off-white #f2f2f2.
+     Light: near-white paper, neutral grey cards, deep-lime accent (bright lime
+     fails contrast on white, so light mode uses a darker shade of the same hue).
+     Dark: the logo's own ink background and panels, with the bright lime.
      Tuned per theme (not a flat inversion). Destructive/success stay as-is. */
   :root {
-    --background: 42 40% 97%;
-    --foreground: 28 18% 16%;
-    --card: 40 33% 94%;
-    --card-foreground: 28 18% 16%;
-    --popover: 42 44% 98%;
-    --popover-foreground: 28 18% 16%;
-    --primary: 175 77% 26%;
-    --primary-foreground: 44 44% 98%;
-    --secondary: 40 28% 91%;
-    --secondary-foreground: 28 18% 20%;
-    --muted: 40 28% 92%;
-    --muted-foreground: 28 9% 40%;
-    --accent: 40 30% 90%;
-    --accent-foreground: 28 18% 20%;
+    --background: 60 9% 98%;
+    --foreground: 0 0% 9%;
+    --card: 60 5% 95.5%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 85 78% 27%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 60 5% 92%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 60 5% 93%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 60 5% 91%;
+    --accent-foreground: 0 0% 12%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 38 24% 85%;
-    --input: 38 24% 85%;
-    --ring: 175 77% 30%;
+    --border: 60 5% 86%;
+    --input: 60 5% 86%;
+    --ring: 85 78% 32%;
     --radius: 0.5rem;
-    /* Brand accent for text, icons and rules — deep teal, tuned to clear WCAG
-       AA against the warm paper/sand surfaces. Filled surfaces keep ui-main so
-       white labels stay legible. Dark theme swaps to a brighter aqua below. */
-    --ui-accent: 182 66% 26%;
+    /* Brand accent for text, icons and rules — deep lime, tuned to clear WCAG
+       AA against the light surfaces. Filled surfaces keep ui-main so white
+       labels stay legible. Dark theme swaps to the logo's bright lime below. */
+    --ui-accent: 86 75% 25%;
+    /* Site header band: evergreen, a dark relative of the logo lime, so the
+       mark sits on it rather than on flat black. Lighter in light mode; the
+       deep shade for dark mode is set on :root.dark below. White and lime
+       labels stay AA-legible on both. */
+    --header-bg: 155 30% 22%;
+  }
+
+  /* Dark-mode header shade. Scoped to the page root rather than the .dark
+     block below, because the header itself carries a `dark` class (to borrow
+     the dark tokens) and would otherwise always get this value. */
+  :root.dark {
+    --header-bg: 155 38% 11%;
   }
 
   .dark {
-    --background: 210 38% 11%;
-    --foreground: 200 24% 93%;
-    --card: 210 30% 15%;
-    --card-foreground: 200 24% 93%;
-    --popover: 210 32% 14%;
-    --popover-foreground: 200 24% 93%;
-    --primary: 184 70% 48%;
-    --primary-foreground: 210 45% 9%;
-    --secondary: 210 26% 20%;
-    --secondary-foreground: 200 24% 93%;
-    --muted: 210 26% 19%;
-    --muted-foreground: 205 18% 66%;
-    --accent: 210 26% 21%;
-    --accent-foreground: 200 24% 93%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8.6%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 80 75% 53%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 210 24% 22%;
-    --input: 210 24% 22%;
-    --ring: 184 70% 50%;
-    --ui-accent: 185 78% 60%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 80 75% 53%;
+    --ui-accent: 80 75% 53%;
   }
 }
 
@@ -84,7 +98,7 @@
   }
 
   /* ── Instrument material ────────────────────────────────────────────────
-     A deep slate-teal slab used for the dashboard's live-data surfaces (the
+     A terminal-ink slab used for the dashboard's live-data surfaces (the
      wire ticker and the AI Pulse band). The page's own workspace stays warm
      paper; readings from the outside world sit on this darker material, so
      the two are legible as different kinds of content at a glance.
@@ -93,12 +107,12 @@
      light and dark themes, so the slab reads as one consistent instrument
      and no existing page's styling changes. */
   .instrument {
-    --inst-bg: 197 44% 8%;
-    --inst-surface: 197 36% 12%;
-    --inst-line: 197 26% 21%;
-    --inst-text: 190 22% 93%;
-    --inst-dim: 195 13% 63%;
-    --inst-accent: 184 74% 56%;
+    --inst-bg: 0 0% 5%;
+    --inst-surface: 0 0% 9%;
+    --inst-line: 0 0% 18%;
+    --inst-text: 0 0% 93%;
+    --inst-dim: 0 0% 62%;
+    --inst-accent: 80 75% 53%;
     /* Amber is the one warm note on the page: a signal lamp, nothing else. */
     --inst-live: 38 92% 62%;
     background-color: hsl(var(--inst-bg));

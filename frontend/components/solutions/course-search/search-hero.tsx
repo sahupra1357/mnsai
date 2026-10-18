@@ -27,7 +27,7 @@ export function SearchHero({
     <div
       className="relative overflow-hidden py-14 px-4"
       style={{
-        background: "linear-gradient(135deg, #003580 0%, #005092 40%, #00766C 100%)",
+        background: "linear-gradient(135deg, #0a0a0a 0%, #161616 40%, #3f6212 100%)",
       }}
     >
       {/* Background geometric decoration */}
@@ -43,7 +43,7 @@ export function SearchHero({
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight">
           Find the Right Course,
           <br />
-          <span className="text-teal-200">Near You.</span>
+          <span className="text-lime-200">Near You.</span>
         </h1>
         <p className="text-white/70 text-sm mb-8">
           Compare courses from top colleges — rated, priced, and sorted by distance.
@@ -91,7 +91,7 @@ export function SearchHero({
 
           <Button
             onClick={onSearch}
-            className="bg-[#003580] hover:bg-[#002660] text-white px-6 rounded-lg sm:rounded-lg h-auto py-2.5"
+            className="bg-ui-main hover:bg-ui-main/90 text-white px-6 rounded-lg sm:rounded-lg h-auto py-2.5"
           >
             <Search size={15} className="mr-1.5" />
             Search

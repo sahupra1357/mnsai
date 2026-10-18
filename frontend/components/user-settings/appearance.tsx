@@ -18,11 +18,11 @@ const Appearance = () => {
             value="light"
             checked={theme === "light"}
             onChange={() => setTheme("light")}
-            className="accent-teal-500"
+            className="accent-ui-main"
           />
           <Label className="cursor-pointer">
             Light Mode
-            <Badge className="ml-1 bg-teal-500 text-white">Default</Badge>
+            <Badge className="ml-1 bg-primary text-primary-foreground">Default</Badge>
           </Label>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -32,7 +32,7 @@ const Appearance = () => {
             value="dark"
             checked={theme === "dark"}
             onChange={() => setTheme("dark")}
-            className="accent-teal-500"
+            className="accent-ui-main"
           />
           <Label className="cursor-pointer">Dark Mode</Label>
         </label>

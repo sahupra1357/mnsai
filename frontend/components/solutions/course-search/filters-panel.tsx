@@ -205,7 +205,7 @@ function FiltersContent({ filters, onChange, onReset }: FiltersPanelProps) {
 /** Desktop sticky sidebar — renders only on lg+ screens */
 export function FiltersSidebar(props: FiltersPanelProps) {
   return (
-    <aside className="hidden lg:block w-56 flex-shrink-0 sticky top-4 self-start bg-card border border-border rounded-xl p-4 shadow-sm">
+    <aside className="hidden lg:block w-56 flex-shrink-0 sticky top-[76px] self-start bg-card border border-border rounded-xl p-4 shadow-sm">
       <FiltersContent {...props} />
     </aside>
   )

@@ -31,6 +31,7 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
+        header: "hsl(var(--header-bg))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -61,10 +62,11 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
         ui: {
-          // Saturated brand fill (deep teal) — matches the --primary token so
-          // filled surfaces (contact band, chat bubbles, launcher) and shadcn
-          // buttons read as one family. White labels stay AA-legible on it.
-          main: "#0f766e",
+          // Saturated brand fill (deep lime, the logo's hue darkened) — matches
+          // the light --primary token so filled surfaces (contact band, chat
+          // bubbles, launcher) and buttons read as one family. White labels
+          // stay AA-legible on it.
+          main: "#4d7c0f",
           accent: "hsl(var(--ui-accent))",
           success: "#48BB78",
           danger: "#E53E3E",

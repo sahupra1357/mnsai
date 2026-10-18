@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Menu, X, ChevronDown } from "lucide-react"
+import { Logo } from "@/components/common/logo"
+import { ThemeToggle } from "@/components/common/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,9 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import UserMenu from "./user-menu"
 import useAuth from "@/hooks/use-auth"
-import { SOLUTIONS, solutionNavHref } from "@/lib/solutions"
+import { SOLUTIONS, TOOLS_ANCHOR, solutionNavHref } from "@/lib/solutions"
+import { ChevronDown, Menu, X } from "lucide-react"
+import Link from "next/link"
+import { useState } from "react"
+import UserMenu from "./user-menu"
 
 interface NavItem {
   label: string
@@ -26,7 +27,7 @@ interface NavItem {
 
 const NAV_ITEMS: Array<NavItem> = [
   {
-    label: "Product",
+    label: "Learn",
     children: [
       {
         label: "Knowledge Hub",
@@ -37,6 +38,11 @@ const NAV_ITEMS: Array<NavItem> = [
         label: "AI Engineering Guide",
         subLabel: "Start here: every stage summarised",
         href: "/learn/AI_ENGINEERING_GUIDE",
+      },
+      {
+        label: "Projects",
+        subLabel: "Working systems built on these notes",
+        href: `/#${TOOLS_ANCHOR}`,
       },
     ],
   },
@@ -150,15 +156,20 @@ export default function WithSubnavigation({
     )
     .filter((item) => !item.children || item.children.length > 0)
 
+  // The header is always the deep-evergreen band (--header-bg) with lime,
+  // whatever the page theme: `dark` scopes the dark tokens to this subtree, so
+  // the logo, links and buttons inside pick up the dark palette in light mode
+  // too. Sticky, so it stays in view while the page scrolls; the sticky
+  // sidebars below it offset by its 60px height.
   return (
-    <nav className="border-b border-border bg-background">
-      <div className="flex min-h-[60px] items-center px-4 py-2">
+    <nav className="dark sticky top-0 z-50 bg-header text-foreground shadow-md shadow-black/10">
+      <div className="flex h-[60px] items-center px-4">
         {/* Mobile hamburger */}
         <div className="flex md:hidden mr-2">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle Navigation"
-            className="p-1 rounded hover:bg-muted"
+            className="p-1 rounded text-foreground hover:bg-white/10"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -167,15 +178,7 @@ export default function WithSubnavigation({
         {/* Logo */}
         <div className="flex flex-1 items-center px-4">
           <Link href={logoHref}>
-            <Image
-              src="/assets/images/mnsAI_2-transparent.png"
-              alt="mnsAI logo"
-              width={140}
-              height={50}
-              style={{ width: "auto", height: "auto" }}
-              className="dark:brightness-0 dark:invert"
-              priority
-            />
+            <Logo />
           </Link>
 
           {/* Desktop nav */}
@@ -184,7 +187,7 @@ export default function WithSubnavigation({
               navItem.children ? (
                 <DropdownMenu key={navItem.label}>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-ui-main hover:text-[#00766C] transition-colors">
+                    <button className="flex items-center gap-1 px-2 py-1 text-sm font-medium text-foreground/85 hover:text-ui-accent transition-colors">
                       {navItem.label}
                       <ChevronDown size={14} />
                     </button>
@@ -208,7 +211,7 @@ export default function WithSubnavigation({
                 <Link
                   key={navItem.label}
                   href={navItem.href ?? "#"}
-                  className="px-2 py-1 text-sm font-medium text-ui-main hover:text-[#00766C] transition-colors"
+                  className="px-2 py-1 text-sm font-medium text-foreground/85 hover:text-ui-accent transition-colors"
                 >
                   {navItem.label}
                 </Link>
@@ -219,13 +222,14 @@ export default function WithSubnavigation({
 
         {/* Auth buttons */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <UserMenu hideSignedOutActions={hideSignedOutAuth} />
         </div>
       </div>
 
       {/* Mobile nav */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background px-4 py-2">
+        <div className="md:hidden border-t border-white/10 bg-header px-4 py-2">
           {navItems.map((navItem) => (
             <div key={navItem.label} className="py-1">
               {navItem.children ? (
@@ -237,7 +241,7 @@ export default function WithSubnavigation({
                     <Link
                       key={child.label}
                       href={child.href ?? "#"}
-                      className="block pl-4 py-1 text-sm hover:text-[#00766C]"
+                      className="block pl-4 py-1 text-sm hover:text-ui-accent"
                       onClick={() => setMobileOpen(false)}
                     >
                       {child.label}
@@ -247,7 +251,7 @@ export default function WithSubnavigation({
               ) : (
                 <Link
                   href={navItem.href ?? "#"}
-                  className="block py-1 text-sm font-semibold hover:text-[#00766C]"
+                  className="block py-1 text-sm font-semibold hover:text-ui-accent"
                   onClick={() => setMobileOpen(false)}
                 >
                   {navItem.label}

@@ -91,7 +91,7 @@ const AddItem = ({ isOpen, onClose }: AddItemProps) => {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-ui-main hover:bg-[#003d8f] text-white"
+              className="bg-ui-main hover:bg-ui-main/90 text-white"
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save

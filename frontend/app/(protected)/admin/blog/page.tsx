@@ -182,7 +182,7 @@ export default function AdminBlogPage() {
           <h1 className="text-2xl font-bold text-foreground">Blog Management</h1>
           <p className="text-sm text-muted-foreground mt-1">Create and manage blog posts. Content supports Markdown.</p>
         </div>
-        <Button onClick={openCreate} className="gap-2 bg-ui-main hover:bg-[#003d8f]">
+        <Button onClick={openCreate} className="gap-2 bg-ui-main hover:bg-ui-main/90">
           <Plus className="h-4 w-4" /> New Post
         </Button>
       </div>
@@ -332,7 +332,7 @@ export default function AdminBlogPage() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving} className="bg-ui-main hover:bg-[#003d8f]">
+              <Button type="submit" disabled={saving} className="bg-ui-main hover:bg-ui-main/90">
                 {saving ? "Saving…" : editing ? "Update Post" : "Create Post"}
               </Button>
             </DialogFooter>

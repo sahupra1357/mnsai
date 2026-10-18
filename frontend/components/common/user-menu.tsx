@@ -38,7 +38,7 @@ const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className="text-ui-main font-semibold hover:bg-[#00766C] hover:text-white"
+          className="font-semibold text-foreground/85 hover:bg-white/10 hover:text-ui-accent"
           asChild
         >
           <Link href="/login">Sign In</Link>
@@ -46,7 +46,7 @@ const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
         <Button
           variant="ghost"
           size="sm"
-          className="hidden md:inline-flex text-ui-main font-semibold hover:bg-[#00766C] hover:text-white"
+          className="hidden md:inline-flex bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
           asChild
         >
           <Link href="/signup">Sign Up</Link>
@@ -61,7 +61,7 @@ const UserMenu = ({ hideSignedOutActions = false }: UserMenuProps) => {
         <DropdownMenuTrigger asChild>
           <Button
             size="icon"
-            className="rounded-full bg-ui-main hover:bg-[#00766C] text-white"
+            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             aria-label="Options"
             data-testid="user-menu"
           >

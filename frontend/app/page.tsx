@@ -45,7 +45,7 @@ export default async function KnowledgeHubPage() {
   return (
     <KnowledgeShell>
       {/* Hero */}
-      <div className="dossier-dots border-b border-border bg-muted/20">
+      <div className="dossier-dots bg-muted/20">
         <div className="px-6 py-14 sm:py-20 lg:px-10 2xl:px-14">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ui-accent">
             AI engineering knowledge hub

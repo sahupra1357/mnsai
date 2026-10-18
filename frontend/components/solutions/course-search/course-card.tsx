@@ -84,14 +84,14 @@ function CourseCardGrid({
   return (
     <div className="group bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col">
       {/* Top accent bar */}
-      <div className="h-1 bg-gradient-to-r from-[#003580] to-[#00766C]" />
+      <div className="h-1 bg-gradient-to-r from-[#3f6212] to-[#a6e22e]" />
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         {/* College row */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-semibold text-[#003580] truncate max-w-[160px]">
+              <span className="text-xs font-semibold text-ui-accent truncate max-w-[160px]">
                 {course.college.name}
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
@@ -180,7 +180,7 @@ function CourseCardGrid({
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin size={12} className="text-[#003580] flex-shrink-0" />
+            <MapPin size={12} className="text-ui-accent flex-shrink-0" />
             <span>{formatDistance(course.college.distanceKm)}</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -200,7 +200,7 @@ function CourseCardGrid({
       <div className="px-4 pb-4 pt-0">
         <Button
           size="sm"
-          className="w-full bg-[#003580] hover:bg-[#002660] text-white gap-1.5 text-xs"
+          className="w-full bg-ui-main hover:bg-ui-main/90 text-white gap-1.5 text-xs"
         >
           <ExternalLink size={12} />
           View Details
@@ -221,15 +221,15 @@ function CourseCardList({
     <div className="group bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
       <div className="flex gap-0">
         {/* Left accent stripe */}
-        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-[#003580] to-[#00766C]" />
+        <div className="w-1 flex-shrink-0 bg-gradient-to-b from-[#3f6212] to-[#a6e22e]" />
 
         <div className="flex flex-col sm:flex-row gap-4 p-4 flex-1 min-w-0">
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-2">
             {/* College */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <GraduationCap size={13} className="text-[#003580] flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#003580]">{course.college.name}</span>
+              <GraduationCap size={13} className="text-ui-accent flex-shrink-0" />
+              <span className="text-xs font-semibold text-ui-accent">{course.college.name}</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                 {COLLEGE_TYPE_LABELS[course.college.type]}
               </span>
@@ -295,7 +295,7 @@ function CourseCardList({
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin size={12} className="text-[#003580] flex-shrink-0" />
+                <MapPin size={12} className="text-ui-accent flex-shrink-0" />
                 <span>{formatDistance(course.college.distanceKm)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -313,7 +313,7 @@ function CourseCardList({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="flex-1 bg-[#003580] hover:bg-[#002660] text-white text-xs gap-1"
+                className="flex-1 bg-ui-main hover:bg-ui-main/90 text-white text-xs gap-1"
               >
                 <ExternalLink size={11} />
                 Details

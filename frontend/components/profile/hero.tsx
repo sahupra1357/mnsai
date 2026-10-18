@@ -34,13 +34,13 @@ export async function Hero() {
       {/* Soft brand wash behind the hero */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-ui-accent/[0.07] via-transparent to-cyan-500/[0.06]"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-ui-accent/[0.07] via-transparent to-lime-500/[0.06]"
       />
 
       <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 pb-20 pt-20 sm:pt-24 lg:flex-row lg:items-center lg:gap-14">
         {/* Avatar */}
         <div className="relative shrink-0">
-          <div className="relative flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-ui-accent/20 to-cyan-400/20 p-1.5 shadow-xl shadow-ui-accent/10 ring-1 ring-border sm:h-48 sm:w-48">
+          <div className="relative flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-ui-accent/20 to-lime-400/20 p-1.5 shadow-xl shadow-ui-accent/10 ring-1 ring-border sm:h-48 sm:w-48">
             {headshot ? (
               <Image
                 src={headshot}
@@ -51,7 +51,7 @@ export async function Hero() {
                 className="rounded-full object-cover p-1.5"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#06b6d4]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#3f6212] to-[#65a30d]">
                 <span className="font-display text-5xl font-bold tracking-tight text-white sm:text-6xl">
                   {profile.initials}
                 </span>
@@ -70,7 +70,7 @@ export async function Hero() {
           </p>
 
           <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-            <span className="bg-gradient-to-r from-[#0f766e] via-[#0d9488] to-[#0891b2] bg-clip-text text-transparent dark:from-[#2dd4bf] dark:via-[#22d3ee] dark:to-[#38bdf8]">
+            <span className="bg-gradient-to-r from-[#3f6212] via-[#4d7c0f] to-[#65a30d] bg-clip-text text-transparent dark:from-[#a6e22e] dark:via-[#bef264] dark:to-[#d9f99d]">
               {profile.headlineAccent}
             </span>
           </h1>

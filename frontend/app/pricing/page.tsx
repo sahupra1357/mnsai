@@ -130,7 +130,7 @@ export default function PricingPage() {
                   asChild
                   className={
                     plan.highlight
-                      ? "bg-ui-main hover:bg-[#003d8f] text-white w-full mt-2"
+                      ? "bg-ui-main hover:bg-ui-main/90 text-white w-full mt-2"
                       : "w-full mt-2"
                   }
                   variant={plan.highlight ? "default" : "outline"}

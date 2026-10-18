@@ -1,17 +1,17 @@
 "use client"
 
-import Link from "next/link"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { type SubmitHandler, useForm } from "react-hook-form"
-import { Loader2 } from "lucide-react"
-import type { UserRegister } from "@/src/client"
-import useAuth from "@/hooks/use-auth"
-import { confirmPasswordRules, emailPattern, passwordRules } from "@/lib/utils"
+import { Logo } from "@/components/common/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import useAuth from "@/hooks/use-auth"
+import { confirmPasswordRules, emailPattern, passwordRules } from "@/lib/utils"
+import type { UserRegister } from "@/src/client"
+import { Loader2 } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { type SubmitHandler, useForm } from "react-hook-form"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -53,15 +53,7 @@ export default function SignUpPage() {
     <div className="flex h-screen flex-col md:flex-row justify-center">
       <div className="flex h-full max-w-sm mx-auto flex-col items-stretch justify-center gap-4 px-4">
         <div className="flex justify-center mb-4">
-          <Image
-            src="/assets/images/mnsAI_2-transparent.png"
-            alt="mnsAI logo"
-            width={160}
-            height={60}
-            style={{ width: "auto", height: "auto" }}
-            className="dark:brightness-0 dark:invert"
-            priority
-          />
+          <Logo size="lg" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -128,7 +120,7 @@ export default function SignUpPage() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="bg-ui-main hover:bg-[#003d8f] text-white"
+            className="bg-ui-main hover:bg-ui-main/90 text-white"
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign Up
@@ -180,7 +172,7 @@ export default function SignUpPage() {
 
         <p className="text-sm text-center">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-500">
+          <Link href="/login" className="text-ui-accent hover:underline">
             Log In
           </Link>
         </p>

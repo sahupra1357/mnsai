@@ -95,7 +95,7 @@ const ChangePassword = () => {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 bg-ui-main hover:bg-[#003d8f] text-white w-fit"
+          className="mt-2 bg-ui-main hover:bg-ui-main/90 text-white w-fit"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save

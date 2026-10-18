@@ -200,7 +200,7 @@ export function ChatWidget() {
           className="fixed inset-0 z-50 flex flex-col overflow-hidden border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:h-[560px] sm:max-h-[calc(100vh-8rem)] sm:w-[380px] sm:rounded-2xl sm:border"
         >
           {/* Header */}
-          <div className="flex items-center gap-3 border-b border-border bg-gradient-to-br from-ui-main to-[#0e7490] px-4 py-3.5 text-white">
+          <div className="flex items-center gap-3 border-b border-border bg-gradient-to-br from-ui-main to-[#3f6212] px-4 py-3.5 text-white">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 ring-2 ring-white/30">
               <span className="font-display text-sm font-bold tracking-tight">
                 PS
@@ -210,7 +210,7 @@ export function ChatWidget() {
               <p className="truncate text-sm font-semibold leading-tight">
                 {chatWidget.name}
               </p>
-              <p className="flex items-center gap-1.5 text-xs text-teal-50/85">
+              <p className="flex items-center gap-1.5 text-xs text-lime-50/85">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -325,7 +325,7 @@ export function ChatWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? chatWidget.launcherCloseLabel : chatWidget.launcherOpenLabel}
         aria-expanded={open}
-        className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ui-main to-[#0e7490] text-white shadow-lg shadow-ui-main/30 transition-all duration-200 hover:shadow-xl hover:brightness-110 ${
+        className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-ui-main to-[#3f6212] text-white shadow-lg shadow-ui-main/30 transition-all duration-200 hover:shadow-xl hover:brightness-110 ${
           open ? "max-sm:hidden" : ""
         }`}
       >
