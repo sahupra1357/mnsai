@@ -4,6 +4,7 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { slugForPath } from "@/lib/knowledge/tree"
 import { githubBlobUrl, RAW_BASE } from "@/lib/knowledge/source"
+import { type VideoEmbed, videoEmbed } from "@/lib/knowledge/video"
 
 /** GitHub's heading-anchor rule, so `file.md#8-stage-6-...` links land. */
 export function headingId(text: string): string {
@@ -44,6 +45,90 @@ function resolveHref(
   return { href: githubBlobUrl(path) + url.hash, internal: false }
 }
 
+/** A repo-relative asset path as a raw.githubusercontent URL; absolute URLs pass through. */
+function rawUrl(src: string, docPath: string): string {
+  if (/^[a-z]+:/i.test(src)) return src
+  return `${RAW_BASE}/${new URL(src, `https://repo/${docPath}`).pathname.slice(
+    1,
+  )}`
+}
+
+type HastNode = {
+  type: string
+  tagName?: string
+  value?: string
+  properties?: { href?: unknown }
+  children?: HastNode[]
+}
+
+function hastText(node: HastNode): string {
+  if (node.type === "text") return node.value ?? ""
+  return (node.children ?? []).map(hastText).join("")
+}
+
+/**
+ * The video a paragraph embeds, if the paragraph is nothing but one link to a
+ * recognised video — the "link on a line of its own" convention (see
+ * lib/knowledge/video.ts). Link text other than the bare URL becomes the
+ * caption. A link inside a sentence is left alone.
+ */
+function paragraphVideo(
+  node: HastNode | undefined,
+  docPath: string,
+): { embed: VideoEmbed; caption: string | null } | null {
+  const kids = (node?.children ?? []).filter(
+    (c) => !(c.type === "text" && !c.value?.trim()),
+  )
+  const link = kids[0]
+  if (kids.length !== 1 || link.type !== "element" || link.tagName !== "a") {
+    return null
+  }
+  const href = link.properties?.href
+  if (typeof href !== "string" || href.startsWith("#")) return null
+  const embed = videoEmbed(rawUrl(href, docPath))
+  if (!embed) return null
+  const text = hastText(link).trim()
+  return { embed, caption: text && text !== href ? text : null }
+}
+
+function VideoBlock({
+  embed,
+  caption,
+}: { embed: VideoEmbed; caption: string | null }) {
+  const title = caption ?? "Lesson video"
+  return (
+    <figure className="not-prose my-8">
+      <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-black">
+        {embed.kind === "iframe" ? (
+          <iframe
+            src={embed.src}
+            title={`${embed.provider}: ${title}`}
+            className="h-full w-full"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        ) : (
+          // biome-ignore lint/a11y/useMediaCaption: captions are the lesson author's to supply; the repo has no track files
+          <video
+            src={embed.src}
+            controls
+            preload="metadata"
+            className="h-full w-full"
+            aria-label={title}
+          />
+        )}
+      </div>
+      {caption && (
+        <figcaption className="mt-2 text-center text-xs text-muted-foreground">
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
 function heading(Tag: "h1" | "h2" | "h3" | "h4") {
   return function Heading({ children }: { children?: ReactNode }) {
     const id = headingId(textOf(children))
@@ -82,14 +167,12 @@ export function KnowledgeMarkdown({
         </a>
       )
     },
+    p({ node, children }) {
+      const video = paragraphVideo(node as HastNode | undefined, docPath)
+      return video ? <VideoBlock {...video} /> : <p>{children}</p>
+    },
     img({ src = "", alt }) {
-      const url =
-        typeof src === "string" && !/^[a-z]+:/i.test(src)
-          ? `${RAW_BASE}/${new URL(
-              src,
-              `https://repo/${docPath}`,
-            ).pathname.slice(1)}`
-          : String(src)
+      const url = typeof src === "string" ? rawUrl(src, docPath) : String(src)
       // biome-ignore lint/performance/noImgElement: arbitrary remote repo images; next/image would need every host allow-listed
       return <img src={url} alt={alt ?? ""} loading="lazy" />
     },
