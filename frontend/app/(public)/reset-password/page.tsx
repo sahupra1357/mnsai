@@ -95,7 +95,7 @@ export default function ResetPasswordPage() {
       </div>
       <Button
         type="submit"
-        className="bg-ui-main hover:bg-[#003d8f] text-white"
+        className="bg-ui-main hover:bg-ui-main/90 text-white"
       >
         Reset Password
       </Button>

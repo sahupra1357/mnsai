@@ -37,7 +37,7 @@ const BADGE: Record<
  * Projects built on the knowledge in the hub. Catalogue order is kept (it is
  * shared with the nav's Solutions menu); what a visitor can actually do with
  * each one is carried by the badge and the card's weight instead — a tool
- * that runs here gets the teal ring and a pulsing "Live demo" lamp.
+ * that runs here gets the brand-accent ring and a pulsing "Live demo" lamp.
  *
  * Same two-destination pattern as the old tools grid: the primary action
  * stretches over the card via ::after, the source link sits above on z-10.

@@ -89,7 +89,7 @@ function UsersTable() {
                 <TableCell className="max-w-[150px] truncate text-muted-foreground">
                   {user.full_name || "N/A"}
                   {currentUser?.id === user.id && (
-                    <Badge className="ml-1 bg-teal-500 text-white">You</Badge>
+                    <Badge className="ml-1 bg-primary text-primary-foreground">You</Badge>
                   )}
                 </TableCell>
                 <TableCell className="max-w-[150px] truncate">

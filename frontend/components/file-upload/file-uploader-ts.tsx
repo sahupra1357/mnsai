@@ -110,7 +110,7 @@ function FileUploaderTS() {
           <Button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="bg-ui-main hover:bg-[#00766C] text-white font-bold"
+            className="bg-ui-main hover:bg-ui-main/90 text-white font-bold"
           >
             Choose File
           </Button>
@@ -118,7 +118,7 @@ function FileUploaderTS() {
             <Button
               type="button"
               onClick={handleUpload}
-              className="bg-ui-main hover:bg-[#00766C] text-white font-bold"
+              className="bg-ui-main hover:bg-ui-main/90 text-white font-bold"
             >
               Upload
             </Button>

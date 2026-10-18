@@ -131,7 +131,7 @@ const ProfilePhoto = () => {
       </p>
 
       <div className="flex items-center gap-6">
-        <div className="relative h-28 w-28 shrink-0 rounded-full bg-gradient-to-br from-ui-accent/20 to-cyan-400/20 p-1.5 ring-1 ring-border">
+        <div className="relative h-28 w-28 shrink-0 rounded-full bg-gradient-to-br from-ui-accent/20 to-lime-400/20 p-1.5 ring-1 ring-border">
           {isLoading ? (
             <div className="h-full w-full animate-pulse rounded-full bg-muted" />
           ) : currentSrc ? (
@@ -144,7 +144,7 @@ const ProfilePhoto = () => {
               className="h-full w-full rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#0f766e] to-[#06b6d4]">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#3f6212] to-[#65a30d]">
               <span className="text-2xl font-bold tracking-tight text-white">
                 PS
               </span>
@@ -172,7 +172,7 @@ const ProfilePhoto = () => {
           <div className="flex gap-3">
             <Button
               type="button"
-              className="bg-ui-main hover:bg-[#003d8f] text-white"
+              className="bg-ui-main hover:bg-ui-main/90 text-white"
               onClick={() => fileInputRef.current?.click()}
               disabled={isBusy}
             >

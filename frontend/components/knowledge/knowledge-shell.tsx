@@ -41,7 +41,7 @@ export async function KnowledgeShell({
       <WithSubnavigation />
 
       <div className="flex w-full flex-1">
-        <aside className="sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-border lg:block">
+        <aside className="sticky top-[60px] hidden h-[calc(100vh-60px)] w-72 shrink-0 overflow-y-auto lg:block">
           <KnowledgeSidebar {...sidebarProps} />
         </aside>
 

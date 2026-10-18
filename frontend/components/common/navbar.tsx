@@ -16,7 +16,7 @@ const Navbar = ({ type, addModalAs }: NavbarProps) => {
   return (
     <div className="flex py-8 gap-4">
       <Button
-        className="bg-ui-main hover:bg-[#003d8f] text-white gap-1 text-sm md:text-base"
+        className="bg-ui-main hover:bg-ui-main/90 text-white gap-1 text-sm md:text-base"
         onClick={() => setIsOpen(true)}
       >
         <Plus size={16} /> Add {type}
