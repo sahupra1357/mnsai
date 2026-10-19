@@ -64,7 +64,7 @@ export default function ProfilePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-background px-6 py-10">
+      <footer className="bg-background px-6 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} {profile.name}. All rights

@@ -103,7 +103,7 @@ export default function BlogListPage() {
         </div>
       </section>
 
-      <footer className="mt-auto px-6 py-8 border-t text-center text-sm text-muted-foreground">
+      <footer className="mt-auto px-6 py-8 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} mnsAI. All rights reserved.
       </footer>
     </div>
