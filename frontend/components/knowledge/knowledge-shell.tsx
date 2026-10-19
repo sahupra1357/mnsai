@@ -5,7 +5,6 @@ import {
   type SidebarProject,
 } from "@/components/knowledge/sidebar"
 import { getKnowledgeTree } from "@/lib/knowledge/tree"
-import { KNOWLEDGE_REPO_URL } from "@/lib/knowledge/source"
 import { SOLUTIONS, solutionNavHref, solutionStatus } from "@/lib/solutions"
 
 /**
@@ -50,24 +49,6 @@ export async function KnowledgeShell({
           {children}
         </div>
       </div>
-
-      <footer className="border-t border-border px-6 py-8">
-        <p className="mx-auto max-w-6xl text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-          Content from{" "}
-          <a
-            href={KNOWLEDGE_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline-offset-2 hover:text-foreground hover:underline"
-          >
-            github.com/sahupra1357/AISystems
-          </a>{" "}
-          · refreshed hourly
-          {tree.source === "snapshot"
-            ? " · showing the bundled index (GitHub unreachable)"
-            : ""}
-        </p>
-      </footer>
     </div>
   )
 }

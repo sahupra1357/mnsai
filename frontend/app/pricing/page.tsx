@@ -4,7 +4,15 @@ import WithSubnavigation from "@/components/common/with-subnavigation"
 import QuotaBanner from "@/components/pricing/quota-banner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Check, ArrowRight } from "lucide-react"
+import { Check, ArrowRight, Mail } from "lucide-react"
+
+/**
+ * Plans are hidden for now; the page stays routed (and in the nav) because a
+ * refused metered request sends the user here and QuotaBanner explains it.
+ * Flip to true to publish the plans below again.
+ */
+const SHOW_PLANS = false
+const CONTACT_EMAIL = "admin@mnsai.in"
 
 const plans = [
   {
@@ -46,7 +54,7 @@ const plans = [
     period: "contact us",
     description: "For large teams with custom needs.",
     cta: "Contact Sales",
-    href: "mailto:admin@mnsai.in",
+    href: `mailto:${CONTACT_EMAIL}`,
     highlight: false,
     features: [
       "Everything in Pro",
@@ -83,78 +91,106 @@ export default function PricingPage() {
           Pricing
         </span>
         <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl max-w-2xl">
-          Simple, transparent pricing
+          {SHOW_PLANS
+            ? "Simple, transparent pricing"
+            : "Pricing is coming soon"}
         </h1>
         <p className="mt-4 text-muted-foreground max-w-lg text-lg">
-          Start free, scale as you grow. No hidden fees, no surprises.
+          {SHOW_PLANS
+            ? "Start free, scale as you grow. No hidden fees, no surprises."
+            : "Plans are being finalised. Need more requests or a custom setup in the meantime? Get in touch."}
         </p>
+        {!SHOW_PLANS && (
+          <Button
+            asChild
+            className="mt-8 bg-ui-main hover:bg-ui-main/90 text-white"
+          >
+            <Link href={`mailto:${CONTACT_EMAIL}`}>
+              <Mail className="mr-1.5 h-4 w-4" /> Contact us
+            </Link>
+          </Button>
+        )}
       </section>
 
       {/* Plans */}
-      <section className="px-6 pb-20">
-        <div className="mx-auto max-w-5xl grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {plans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={`flex flex-col border ${
-                plan.highlight
-                  ? "border-ui-main shadow-lg shadow-ui-main/10 ring-1 ring-ui-main"
-                  : "border-border"
-              }`}
+      {SHOW_PLANS && (
+        <section className="px-6 pb-20">
+          <div className="mx-auto max-w-5xl grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {plans.map((plan) => (
+              <Card
+                key={plan.name}
+                className={`flex flex-col border ${
+                  plan.highlight
+                    ? "border-ui-main shadow-lg shadow-ui-main/10 ring-1 ring-ui-main"
+                    : "border-border"
+                }`}
+              >
+                {plan.highlight && (
+                  <div className="bg-ui-main text-white text-xs font-bold text-center py-1.5 rounded-t-xl tracking-widest uppercase">
+                    Most Popular
+                  </div>
+                )}
+                <CardHeader className="pb-2 pt-6 px-6">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+                    {plan.name}
+                  </p>
+                  <div className="flex items-end gap-1 mt-2">
+                    <span className="text-4xl font-extrabold text-foreground">
+                      {plan.price}
+                    </span>
+                    <span className="text-sm text-muted-foreground mb-1">
+                      /{plan.period}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {plan.description}
+                  </p>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4 px-6 pb-6 flex-1">
+                  <ul className="space-y-2.5 flex-1">
+                    {plan.features.map((f) => (
+                      <li
+                        key={f}
+                        className="flex items-start gap-2 text-sm text-foreground"
+                      >
+                        <Check className="h-4 w-4 text-ui-main mt-0.5 shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    asChild
+                    className={
+                      plan.highlight
+                        ? "bg-ui-main hover:bg-ui-main/90 text-white w-full mt-2"
+                        : "w-full mt-2"
+                    }
+                    variant={plan.highlight ? "default" : "outline"}
+                  >
+                    <Link href={plan.href}>
+                      {plan.cta} <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* FAQ note */}
+          <p className="text-center text-sm text-muted-foreground mt-10">
+            All prices are in INR and exclusive of applicable taxes.{" "}
+            <Link
+              href="/resources/blog"
+              className="text-ui-main hover:underline"
             >
-              {plan.highlight && (
-                <div className="bg-ui-main text-white text-xs font-bold text-center py-1.5 rounded-t-xl tracking-widest uppercase">
-                  Most Popular
-                </div>
-              )}
-              <CardHeader className="pb-2 pt-6 px-6">
-                <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
-                  {plan.name}
-                </p>
-                <div className="flex items-end gap-1 mt-2">
-                  <span className="text-4xl font-extrabold text-foreground">{plan.price}</span>
-                  <span className="text-sm text-muted-foreground mb-1">/{plan.period}</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4 px-6 pb-6 flex-1">
-                <ul className="space-y-2.5 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                      <Check className="h-4 w-4 text-ui-main mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  asChild
-                  className={
-                    plan.highlight
-                      ? "bg-ui-main hover:bg-ui-main/90 text-white w-full mt-2"
-                      : "w-full mt-2"
-                  }
-                  variant={plan.highlight ? "default" : "outline"}
-                >
-                  <Link href={plan.href}>
-                    {plan.cta} <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              Read our blog
+            </Link>{" "}
+            for product updates and tips.
+          </p>
+        </section>
+      )}
 
-        {/* FAQ note */}
-        <p className="text-center text-sm text-muted-foreground mt-10">
-          All prices are in INR and exclusive of applicable taxes.{" "}
-          <Link href="/resources/blog" className="text-ui-main hover:underline">
-            Read our blog
-          </Link>{" "}
-          for product updates and tips.
-        </p>
-      </section>
-
-      <footer className="mt-auto px-6 py-8 border-t text-center text-sm text-muted-foreground">
+      <footer className="mt-auto px-6 py-8 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} mnsAI. All rights reserved.
       </footer>
     </div>

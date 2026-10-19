@@ -109,7 +109,7 @@ export default function BlogDetailPage() {
         )}
       </div>
 
-      <footer className="px-6 py-8 border-t text-center text-sm text-muted-foreground">
+      <footer className="px-6 py-8 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} mnsAI. All rights reserved.
       </footer>
     </div>
