@@ -79,3 +79,19 @@ export function videoEmbed(href: string): VideoEmbed | null {
   }
   return null
 }
+
+/**
+ * The "## Video takeaway" block the video pipeline writes into a lesson is a
+ * GIF followed by an italic line linking the MP4 and the YouTube video. On
+ * GitHub that is the right rendering (GIFs autoplay, nothing else does); here
+ * it becomes the YouTube link on a line of its own, which the renderer turns
+ * into a player. The GIF's alt text becomes the caption.
+ */
+const TAKEAWAY_BLOCK =
+  /!\[([^\]]*)\]\([^)\s]*-demo\.gif\)[ \t]*\r?\n\s*\r?\n\*\(\[full-resolution MP4[^\]]*\]\([^)\s]*\)[^\n]*?\[watch on YouTube\]\((https?:\/\/[^)\s]+)\)\)\*/g
+
+export function inlineTakeawayVideos(markdown: string): string {
+  return markdown.replace(TAKEAWAY_BLOCK, (whole, alt: string, url: string) =>
+    videoEmbed(url) ? `[${alt.replace(/[[\]]/g, "")}](${url})` : whole,
+  )
+}
