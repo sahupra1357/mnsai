@@ -4,7 +4,11 @@ import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { slugForPath } from "@/lib/knowledge/tree"
 import { githubBlobUrl, RAW_BASE } from "@/lib/knowledge/source"
-import { type VideoEmbed, videoEmbed } from "@/lib/knowledge/video"
+import {
+  inlineTakeawayVideos,
+  type VideoEmbed,
+  videoEmbed,
+} from "@/lib/knowledge/video"
 
 /** GitHub's heading-anchor rule, so `file.md#8-stage-6-...` links land. */
 export function headingId(text: string): string {
@@ -190,7 +194,7 @@ export function KnowledgeMarkdown({
   return (
     <div className="prose prose-slate max-w-none dark:prose-invert prose-headings:font-display prose-headings:tracking-tight prose-a:text-ui-accent prose-a:no-underline hover:prose-a:underline prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-pre:border prose-pre:border-border prose-pre:bg-muted/50 prose-pre:text-foreground prose-pre:text-[12.5px] prose-pre:leading-relaxed prose-blockquote:font-normal prose-blockquote:not-italic prose-blockquote:border-l-ui-main/50 prose-blockquote:text-muted-foreground [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none [&_pre_code]:bg-transparent [&_pre_code]:p-0">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {markdown}
+        {inlineTakeawayVideos(markdown)}
       </ReactMarkdown>
     </div>
   )
